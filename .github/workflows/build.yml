@@ -46,7 +46,8 @@ jobs:
           xcode-version: '${{matrix.xcode}}'
       - name: 'Configure'
         run: 'cmake -B build -DCMAKE_BUILD_TYPE=${{matrix.build_type}}'
-
+      - name: 'Build'
+        run: 'cmake --build build'
   windows:
     name: "Windows"
     runs-on: 'windows-2019'
