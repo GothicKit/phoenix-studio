@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.10)
 project(phoenix-studio)
 
 option(PSTUDIO_DISABLE_SANITIZERS "Build without sanitizers in debug mode" OFF)
