@@ -1,0 +1,12 @@
+[submodule "vendor/phoenix"]
+	path = vendor/phoenix
+	url = https://github.com/lmichaelis/phoenix.git
+	shallow = true
+[submodule "vendor/stb"]
+	path = vendor/stb
+	url = https://github.com/nothings/stb
+	shallow = true
+[submodule "vendor/flags"]
+	path = vendor/flags
+	url = https://github.com/sailormoon/flags.git
+	shallow = true

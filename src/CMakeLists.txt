@@ -1,0 +1,5 @@
+add_subdirectory(ztex)
+add_subdirectory(zvdfs)
+add_subdirectory(zscript)
+add_subdirectory(zmodel)
+add_subdirectory(zdump)
