@@ -44,12 +44,12 @@ VERSION
 
 static void do_extract(const fs::path& base, const fs::path& self, const std::vector<phoenix::vdf_entry>& entries) {
 	for (const auto& entry : entries) {
-		auto new_self = self / entry.name();
+		auto new_self = self / entry.name;
 		auto output = base / new_self;
 
 		if (entry.is_directory()) {
 			fs::create_directory(output);
-			do_extract(base, new_self, entry.children());
+			do_extract(base, new_self, entry.children);
 		} else {
 			auto content = entry.open();
 
@@ -62,12 +62,12 @@ static void do_extract(const fs::path& base, const fs::path& self, const std::ve
 
 static void do_list(const fs::path& self, const std::vector<phoenix::vdf_entry>& entries) {
 	for (const phoenix::vdf_entry& entry : entries) {
-		auto path = self / entry.name();
+		auto path = self / entry.name;
 
 		fmt::print("{}\n", path.string<char>());
 
 		if (entry.is_directory()) {
-			do_list(path, entry.children());
+			do_list(path, entry.children);
 		}
 	}
 }
@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
 
 			if (args.get<bool>("l", false) || args.get<bool>("list", false)) {
 				auto vdf = phoenix::vdf_file::open(in);
-				do_list("", vdf.entries());
+				do_list("", vdf.entries);
 			} else if (args.get<bool>("x", false) || args.get<bool>("extract", false)) {
 				std::optional<std::string> extract;
 				(extract = args.get<std::string>("x")) || (extract = args.get<std::string>("extract"));
@@ -138,9 +138,9 @@ int main(int argc, char** argv) {
 							return EXIT_FAILURE;
 						}
 
-						do_extract(*output_arg, "", vdf.entries());
+						do_extract(*output_arg, "", vdf.entries);
 					} else {
-						do_extract(".", "", vdf.entries());
+						do_extract(".", "", vdf.entries);
 					}
 				}
 			}

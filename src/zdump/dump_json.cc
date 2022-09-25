@@ -76,10 +76,10 @@ static constexpr const char* FIGHT_MODE_NAMES[] = {
 template <>
 void dump_json<px::font>(const px::font& fnt) {
 	uint8_t chr = 0;
-	fmt::print(R"({{"type": "font", "name": "{}", "glyphHeight": {}, "glyphs": [)", fnt.name(), fnt.height());
+	fmt::print(R"({{"type": "font", "name": "{}", "glyphHeight": {}, "glyphs": [)", fnt.name, fnt.height);
 
-	for (int i = 0; i < fnt.glyphs().size(); ++i) {
-		auto& glyph = fnt.glyphs()[i];
+	for (int i = 0; i < fnt.glyphs.size(); ++i) {
+		auto& glyph = fnt.glyphs[i];
 		if (i != 0) {
 			fmt::print(",");
 		}
@@ -100,8 +100,8 @@ template <>
 void dump_json<px::messages>(const px::messages& messages) {
 	fmt::print(R"({{"type": "dialogs", "blocks": [)");
 
-	for (int i = 0; i < messages.blocks().size(); ++i) {
-		auto& block = messages.blocks()[0];
+	for (int i = 0; i < messages.blocks.size(); ++i) {
+		auto& block = messages.blocks[0];
 		if (i != 0) {
 			fmt::print(",");
 		}
@@ -122,24 +122,24 @@ void dump_json<px::animation>(const px::animation& ani) {
 	    R"({{"name": "{}", "next": "{}", "layer": {}, "frames": {}, "framesPerSecond": {}, "framesPerSecondAlt": {}, )"
 	    R"("bbox": [{{"x": {}, "y": {}, "z": {}}}, {{"x": {}, "y": {}, "z": {}}}], "checksum": {}, "sourcePath": "{}", )"
 	    R"(sourceScript": "{}", "samples": [)",
-	    ani.name(),
-	    ani.next(),
-	    ani.layer(),
-	    ani.frames(),
-	    ani.frames_per_second(),
-	    ani.frames_per_second_alt(),
-	    ani.bbox().min.x,
-	    ani.bbox().min.y,
-	    ani.bbox().min.z,
-	    ani.bbox().max.x,
-	    ani.bbox().max.y,
-	    ani.bbox().max.z,
-	    ani.checksum(),
-	    escape(ani.source_path()),
-	    escape(ani.source_script()));
+	    ani.name,
+	    ani.next,
+	    ani.layer,
+	    ani.frame_count,
+	    ani.fps,
+	    ani.fps_source,
+	    ani.bbox.min.x,
+	    ani.bbox.min.y,
+	    ani.bbox.min.z,
+	    ani.bbox.max.x,
+	    ani.bbox.max.y,
+	    ani.bbox.max.z,
+	    ani.checksum,
+	    escape(ani.source_path),
+	    escape(ani.source_script));
 
-	for (int i = 0; i < ani.samples().size(); ++i) {
-		auto& sample = ani.samples()[0];
+	for (int i = 0; i < ani.samples.size(); ++i) {
+		auto& sample = ani.samples[0];
 		if (i != 0) {
 			fmt::print(",");
 		}
@@ -157,8 +157,8 @@ void dump_json<px::animation>(const px::animation& ani) {
 
 	fmt::print("], \"events\": [");
 
-	for (int i = 0; i < ani.events().size(); ++i) {
-		auto& evt = ani.events()[0];
+	for (int i = 0; i < ani.events.size(); ++i) {
+		auto& evt = ani.events[0];
 		if (i != 0) {
 			fmt::print(",");
 		}
@@ -182,7 +182,7 @@ void dump_json<px::animation>(const px::animation& ani) {
 		fmt::print("]}}");
 	}
 
-	fmt::print(R"(], "nodeIndices": [{}]]}})", fmt::join(ani.node_indices(), ","));
+	fmt::print(R"(], "nodeIndices": [{}]]}})", fmt::join(ani.node_indices, ","));
 }
 
 template <>
@@ -190,24 +190,24 @@ void dump_json<px::model_hierarchy>(const px::model_hierarchy& obj) {
 	fmt::print(R"({{"type": "skeleton", "rootTranslation": {{"x": {}, "y": {}, "z": {}}}, )"
 	           R"("bbox": [{{"x": {}, "y": {}, "z": {}}}, {{"x": {}, "y": {}, "z": {}}}], )"
 	           R"("collisionBbox": [{{"x": {}, "y": {}, "z": {}}}, {{"x": {}, "y": {}, "z": {}}}], "nodes": [)",
-	           obj.root_translation().x,
-	           obj.root_translation().y,
-	           obj.root_translation().z,
-	           obj.bbox().min.x,
-	           obj.bbox().min.y,
-	           obj.bbox().min.z,
-	           obj.bbox().max.x,
-	           obj.bbox().max.y,
-	           obj.collision_bbox().max.z,
-	           obj.collision_bbox().min.x,
-	           obj.collision_bbox().min.y,
-	           obj.collision_bbox().min.z,
-	           obj.collision_bbox().max.x,
-	           obj.collision_bbox().max.y,
-	           obj.collision_bbox().max.z);
+	           obj.root_translation.x,
+	           obj.root_translation.y,
+	           obj.root_translation.z,
+	           obj.bbox.min.x,
+	           obj.bbox.min.y,
+	           obj.bbox.min.z,
+	           obj.bbox.max.x,
+	           obj.bbox.max.y,
+	           obj.collision_bbox.max.z,
+	           obj.collision_bbox.min.x,
+	           obj.collision_bbox.min.y,
+	           obj.collision_bbox.min.z,
+	           obj.collision_bbox.max.x,
+	           obj.collision_bbox.max.y,
+	           obj.collision_bbox.max.z);
 
-	for (int i = 0; i < obj.nodes().size(); ++i) {
-		auto& node = obj.nodes()[0];
+	for (int i = 0; i < obj.nodes.size(); ++i) {
+		auto& node = obj.nodes[0];
 		if (i != 0) {
 			fmt::print(",");
 		}
@@ -286,29 +286,29 @@ std::string format_obb_json(const px::obb& bb) {
 template <>
 void dump_json<px::mesh>(const px::mesh& msh) {
 	struct tm ctime {};
-	ctime.tm_year = msh.date().year;
-	ctime.tm_mon = msh.date().month;
-	ctime.tm_mday = msh.date().day;
-	ctime.tm_hour = msh.date().hour;
-	ctime.tm_min = msh.date().minute;
-	ctime.tm_sec = msh.date().second;
+	ctime.tm_year = msh.date.year;
+	ctime.tm_mon = msh.date.month;
+	ctime.tm_mday = msh.date.day;
+	ctime.tm_hour = msh.date.hour;
+	ctime.tm_min = msh.date.minute;
+	ctime.tm_sec = msh.date.second;
 	std::time_t timestamp = std::mktime(&ctime);
-	auto& polys = msh.polygons();
+	auto& polys = msh.polygons;
 
 	fmt::print(R"({{"type": "mesh", "name": "{}", "timestamp": {}, "aabb": [{{"x": {}, "y": {}, "z": {}}}, )"
 	           R"({{"x": {}, "y": {}, "z": {}}}], "obb": [{}], "materials": [)",
-	           msh.name(),
+	           msh.name,
 	           timestamp,
-	           msh.bbox().min.x,
-	           msh.bbox().min.y,
-	           msh.bbox().min.z,
-	           msh.bbox().max.x,
-	           msh.bbox().max.y,
-	           msh.bbox().max.z,
-	           format_obb_json(msh.oriented_bbox()));
+	           msh.bbox.min.x,
+	           msh.bbox.min.y,
+	           msh.bbox.min.z,
+	           msh.bbox.max.x,
+	           msh.bbox.max.y,
+	           msh.bbox.max.z,
+	           format_obb_json(msh.obb));
 
-	for (int i = 0; i < msh.materials().size(); ++i) {
-		auto& mat = msh.materials()[i];
+	for (int i = 0; i < msh.materials.size(); ++i) {
+		auto& mat = msh.materials[i];
 
 		if (i != 0) {
 			fmt::print(",");
@@ -355,8 +355,8 @@ void dump_json<px::mesh>(const px::mesh& msh) {
 
 	fmt::print(R"(], "vertices": [)");
 
-	for (int i = 0; i < msh.vertices().size(); ++i) {
-		auto& v = msh.vertices()[i];
+	for (int i = 0; i < msh.vertices.size(); ++i) {
+		auto& v = msh.vertices[i];
 
 		if (i != 0) {
 			fmt::print(",");
@@ -367,8 +367,8 @@ void dump_json<px::mesh>(const px::mesh& msh) {
 
 	fmt::print(R"(], "features": [)");
 
-	for (int i = 0; i < msh.features().size(); ++i) {
-		auto& feat = msh.features()[i];
+	for (int i = 0; i < msh.features.size(); ++i) {
+		auto& feat = msh.features[i];
 
 		if (i != 0) {
 			fmt::print(",");
@@ -385,7 +385,7 @@ void dump_json<px::mesh>(const px::mesh& msh) {
 
 	fmt::print(R"(], "polygons": [)");
 
-	for (int i = 0; i < msh.vertices().size() / 3; ++i) {
+	for (int i = 0; i < msh.vertices.size() / 3; ++i) {
 		if (i != 0) {
 			fmt::print(",");
 		}
@@ -416,8 +416,8 @@ void dump_json<px::mesh>(const px::mesh& msh) {
 
 	fmt::print(R"(], "lightmaps": [)");
 
-	for (int i = 0; i < msh.lightmaps().size(); ++i) {
-		auto& lm = msh.lightmaps()[i];
+	for (int i = 0; i < msh.lightmaps.size(); ++i) {
+		auto& lm = msh.lightmaps[i];
 
 		if (i != 0) {
 			fmt::print(",");

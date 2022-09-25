@@ -59,13 +59,13 @@ static void dump_wavefront(std::ostream& out,
 
 	out << "# vertices\n";
 
-	for (const auto& item : mesh.positions()) {
+	for (const auto& item : mesh.positions) {
 		out << "v " << item.x << " " << item.y << " " << item.z << "\n";
 	}
 
 	unsigned wedge_offset = 0;
 	int i = 0;
-	for (const auto& msh : mesh.submeshes()) {
+	for (const auto& msh : mesh.sub_meshes) {
 		out << "g sub" << ++i << "\n"
 		    << "usemtl " << msh.mat.name << "\n";
 
@@ -90,7 +90,7 @@ static void dump_wavefront(std::ostream& out,
 	}
 
 	if (material_out != nullptr) {
-		dump_material(*material_out, mtllib_name, mesh.materials());
+		dump_material(*material_out, mtllib_name, mesh.materials);
 	}
 }
 
@@ -102,12 +102,12 @@ dump_wavefront(std::ostream& out, std::ostream* material_out, std::string_view m
 
 	out << "# vertices\n";
 
-	for (const auto& item : mesh.vertices()) {
+	for (const auto& item : mesh.vertices) {
 		out << "v " << item.x << " " << item.y << " " << item.z << "\n";
 	}
 
-	auto& mats = mesh.materials();
-	auto& feats = mesh.features();
+	auto& mats = mesh.materials;
+	auto& feats = mesh.features;
 
 	out << "\n# normals\n";
 	for (const auto& feat : feats) {
@@ -120,7 +120,7 @@ dump_wavefront(std::ostream& out, std::ostream* material_out, std::string_view m
 	}
 
 	long old_material = -1;
-	auto& polys = mesh.polygons();
+	auto& polys = mesh.polygons;
 	for (unsigned i = 0; i < polys.vertex_indices.size() / 3; ++i) {
 		auto material = polys.material_indices[i];
 
@@ -145,7 +145,7 @@ dump_wavefront(std::ostream& out, std::ostream* material_out, std::string_view m
 	}
 
 	if (material_out != nullptr) {
-		dump_material(*material_out, mtllib_name, mesh.materials());
+		dump_material(*material_out, mtllib_name, mesh.materials);
 	}
 }
 
@@ -233,19 +233,19 @@ int main(int argc, char** argv) {
 				dump_wavefront(*model_out, material_out, material.value_or(""), msh);
 			} else if (phoenix::iequals(extension, "MMB")) {
 				auto msh = phoenix::morph_mesh::parse(in);
-				dump_wavefront(*model_out, material_out, material.value_or(""), msh.mesh());
+				dump_wavefront(*model_out, material_out, material.value_or(""), msh.mesh);
 			} else if (phoenix::iequals(extension, "MDL")) {
 				auto msh = phoenix::model::parse(in);
 				dump_wavefront(*model_out,
 				               material_out,
 				               material.value_or(""),
-				               msh.mesh().meshes()[0].mesh()); // FIXME: support dumping multiple meshes
+				               msh.mesh.meshes[0].mesh); // FIXME: support dumping multiple meshes
 			} else if (phoenix::iequals(extension, "MDM")) {
 				auto msh = phoenix::model_mesh::parse(in);
 				dump_wavefront(*model_out,
 				               material_out,
 				               material.value_or(""),
-				               msh.meshes()[0].mesh()); // FIXME: support dumping multiple meshes
+				               msh.meshes[0].mesh); // FIXME: support dumping multiple meshes
 			} else {
 				fmt::print(stderr, "format not supported: {}", extension);
 				return EXIT_FAILURE;

@@ -35,3 +35,5 @@ endif ()
 
 add_subdirectory(vendor)
 add_subdirectory(src)
+
+add_custom_target(phoenix-studio DEPENDS zdump zscript zvdfs ztex zmodel)
