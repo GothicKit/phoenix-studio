@@ -18,6 +18,18 @@ Currently, it contains simple command-line utilities for reading and converting 
 ## contributing
 If you'd like to contribute, please read [contributing](contributing.md) first.
 
+## currently available tools
+_phoenix studio_ comes with some tools to inspect and convert the _ZenGin_'s file formats. The following is a list of all
+tools currently available:
+
+| Name        | Description                                                                                                                                              |
+|-------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `pxinfo`    | Dump information about various files.                                                                                                                    |
+| `pxmdl`     | Convert `MRM`, `MSH`, `MMB`, `MDL` and `MDM` files as well as world meshes into the [Wavefront](https://en.wikipedia.org/wiki/Wavefront_.obj_file) model |
+| `pxscrdump` | Display, disassemble and decompile  compiled _Daedalus_ scripts (similar to `objdump`).                                                                  |
+| `pxtex`     | Convert `TEX` files to `TGA`                                                                                                                             |
+| `pxvdfs`    | Extract and list contents of `VDF` files.                                                                                                                |
+
 ## building
 _phoenix studio_ is currently only tested on Linux and while Windows _should_ be supported you might run into issues. If so,
 feel free to create an issue or open a merge request. You will need
