@@ -200,6 +200,8 @@ int main(int argc, char** argv) {
 					}
 
 					files[s.file_index()] += def + "\n";
+
+					fmt::print("Processed {}\n", s.name());
 				}
 
 				for (auto& idx : files) {
