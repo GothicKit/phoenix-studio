@@ -257,7 +257,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			}
 		} else {
 			auto dot = sym->name().find('.');
-			sym_name = dot == std::string::npos ? sym->name() : sym_name.substr(dot + 1);
+			sym_name = dot == std::string::npos ? sym->name() : sym->name().substr(dot + 1);
 		}
 
 		return fmt::format("{}[{}]", sym_name, stmt.instr.index);
