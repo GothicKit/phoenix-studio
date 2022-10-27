@@ -323,7 +323,7 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 
 			// if the `br` at the end of the `if`-statement jumps to after where the initial `brz` jumps,
 			// this is either an `else if`-statement or and `else`-statement
-			while (next_branch > stmt.instr.address && pointer <= end_ptr) {
+			while (next_branch > stmt.instr.address && pointer < end_ptr) {
 				auto new_stmt = extract_statement(script, pointer, end_ptr, stack);
 
 				if (new_stmt.instr.op == opcode::bz) {
@@ -344,11 +344,16 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 				} else {
 					// else block
 					code += fmt::format(" else {{\n");
-					auto [else_block, else_next_branch] = decompile_block(script, indent + 4, pointer, -1);
-					next_branch = else_next_branch;
-					pointer = else_next_branch;
+					code += fmt::format("{: >{}}{};\n", "", indent + 4, decompile_statement(script, new_stmt, stack));
 
-					code += else_block + fmt::format("{: >{}}}}", "", indent);
+					if (pointer < next_branch) {
+						auto [else_block, else_next_branch] = decompile_block(script, indent + 4, pointer, next_branch);
+						next_branch = else_next_branch;
+						pointer = else_next_branch;
+						code += else_block;
+					}
+
+					code += fmt::format("{: >{}}}}", "", indent);
 				}
 			}
 
