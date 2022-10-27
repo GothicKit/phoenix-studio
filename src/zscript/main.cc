@@ -343,7 +343,13 @@ std::string print_definition(const script& scr, const symbol& sym, const symbol*
 
 		def += ")";
 	} else {
-		def += fmt::format("const {} {}", get_type_name(sym.type()), sym.name());
+		if (sym.is_const()) {
+			def += "const ";
+		} else {
+			def += "var ";
+		}
+
+		def += fmt::format("{} {}", get_type_name(sym.type()), sym.name());
 		if (sym.count() > 1)
 			def += fmt::format("[{}]", sym.count());
 		def += " = " + print_symbol_value(sym) + ";";
