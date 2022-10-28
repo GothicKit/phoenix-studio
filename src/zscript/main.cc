@@ -302,6 +302,10 @@ std::string print_definition(const script& scr, const symbol& sym, const symbol*
 
 	if (sym.type() == datatype::instance) {
 		def += fmt::format("instance {}({})", sym.name(), (parent == nullptr ? "*ERR*" : parent->name()));
+
+		if (!sym.is_const()) {
+			def += ";";
+		}
 	} else if (sym.type() == datatype::prototype) {
 		def += fmt::format("prototype {}({})", sym.name(), (parent == nullptr ? "*ERR*" : parent->name()));
 	} else if (sym.type() == datatype::class_) {
