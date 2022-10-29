@@ -358,7 +358,11 @@ std::string print_definition(const script& scr, const symbol& sym, const symbol*
 		def += fmt::format("{} {}", get_type_name(sym.type()), sym.name());
 		if (sym.count() > 1)
 			def += fmt::format("[{}]", sym.count());
-		def += " = " + print_symbol_value(sym) + ";";
+
+		if (sym.is_const())
+			def += " = " + print_symbol_value(sym);
+
+		def += ";";
 	}
 
 	return def;
