@@ -199,7 +199,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 	}
 	case opcode::pushi: {
 		if (stmt.instr.immediate > 1000) {
-			return fmt::format("0x{:x}", stmt.instr.immediate);
+			return std::to_string(stmt.instr.immediate); // TODO: Optimize obvious bitshifts and multiples of 16
 		}
 		return std::to_string(stmt.instr.immediate);
 	}
