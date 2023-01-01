@@ -3,17 +3,21 @@
 #include "decompiler.hh"
 
 #include "fmt/format.h"
+#include <set>
 #include <vector>
 
 using namespace phoenix;
 
 static uint32_t current_instance = -1;
 static const symbol* current_symbol = nullptr;
+static std::set<uint32_t> current_symbol_params {};
 
 struct stack_frame {
 	instruction instr;
 	uint32_t instance;
 };
+
+using local_storage = std::unordered_map<std::string, const symbol*>;
 
 bool is_terminating_instruction(const script& script, const instruction& i) {
 	switch (i.op) {
@@ -70,7 +74,10 @@ static std::unordered_map<opcode, std::string> OPCODE_STR {
     {opcode::divmovi, "/="},
 };
 
-std::string decompile_statement(const script& script, const stack_frame& stmt, std::vector<stack_frame>& stack) {
+std::string decompile_statement(const script& script,
+                                const stack_frame& stmt,
+                                std::vector<stack_frame>& stack,
+                                local_storage& locals) {
 	switch (stmt.instr.op) {
 	case opcode::add:
 	case opcode::sub:
@@ -95,7 +102,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			stack.pop_back();
 		}
 
-		auto a = decompile_statement(script, a_instr, stack);
+		auto a = decompile_statement(script, a_instr, stack, locals);
 
 		stack_frame b_instr {opcode::pushi, 0, 0, 0, 0, 0};
 		if (!stack.empty()) {
@@ -103,7 +110,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			stack.pop_back();
 		}
 
-		auto b = decompile_statement(script, b_instr, stack);
+		auto b = decompile_statement(script, b_instr, stack, locals);
 		return fmt::format("({}) {} ({})", a, OPCODE_STR[stmt.instr.op], b);
 	}
 	case opcode::addmovi:
@@ -116,7 +123,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			stack.pop_back();
 		}
 
-		auto ref = decompile_statement(script, ref_instr, stack);
+		auto ref = decompile_statement(script, ref_instr, stack, locals);
 
 		stack_frame a_instr {opcode::pushi, 0, 0, 0, 0, 0};
 		if (!stack.empty()) {
@@ -124,7 +131,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			stack.pop_back();
 		}
 
-		auto a = decompile_statement(script, a_instr, stack);
+		auto a = decompile_statement(script, a_instr, stack, locals);
 		return fmt::format("{} {} {}", ref, OPCODE_STR[stmt.instr.op], a);
 	}
 	case opcode::plus:
@@ -136,7 +143,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			a_instr = stack.back();
 			stack.pop_back();
 		}
-		auto a = decompile_statement(script, a_instr, stack);
+		auto a = decompile_statement(script, a_instr, stack, locals);
 		return fmt::format("{}({})", OPCODE_STR[stmt.instr.op], a);
 	}
 	case opcode::nop:
@@ -152,7 +159,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 
 		auto a_instr = stack.back();
 		stack.pop_back();
-		auto a = decompile_statement(script, a_instr, stack);
+		auto a = decompile_statement(script, a_instr, stack, locals);
 		return fmt::format("return {}", a);
 	}
 	case opcode::bl: {
@@ -168,9 +175,9 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			}
 
 			if (i == 0 || call.size() == 0) {
-				call = fmt::format("{}{}", decompile_statement(script, a_instr, stack), call);
+				call = fmt::format("{}{}", decompile_statement(script, a_instr, stack, locals), call);
 			} else {
-				call = fmt::format("{}, {}", decompile_statement(script, a_instr, stack), call);
+				call = fmt::format("{}, {}", decompile_statement(script, a_instr, stack, locals), call);
 			}
 		}
 
@@ -189,9 +196,9 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			}
 
 			if (i == 0 || call.size() == 0) {
-				call = fmt::format("{}{}", decompile_statement(script, a_instr, stack), call);
+				call = fmt::format("{}{}", decompile_statement(script, a_instr, stack, locals), call);
 			} else {
-				call = fmt::format("{}, {}", decompile_statement(script, a_instr, stack), call);
+				call = fmt::format("{}, {}", decompile_statement(script, a_instr, stack, locals), call);
 			}
 		}
 
@@ -228,7 +235,19 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			}
 		} else {
 			auto dot = sym->name().find('.');
-			sym_name = dot == std::string::npos ? sym->name() : sym->name().substr(dot + 1);
+
+			if (dot != -1) {
+				sym_name = sym->name().substr(dot + 1);
+
+				if (sym->name().substr(0, dot) == current_symbol->name() &&
+				    !current_symbol_params.contains(sym->index())) {
+					if (locals.find(sym_name) == locals.end()) {
+						locals[sym_name] = sym;
+					}
+				}
+			} else {
+				sym_name = sym->name();
+			}
 		}
 
 		if (sym->count() > 1) {
@@ -257,7 +276,18 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			}
 		} else {
 			auto dot = sym->name().find('.');
-			sym_name = dot == std::string::npos ? sym->name() : sym->name().substr(dot + 1);
+			if (dot != -1) {
+				sym_name = sym->name().substr(dot + 1);
+
+				if (sym->name().substr(0, dot) == current_symbol->name() &&
+				    !current_symbol_params.contains(sym->index())) {
+					if (locals.find(sym_name) == locals.end()) {
+						locals[sym_name] = sym;
+					}
+				}
+			} else {
+				sym_name = sym->name();
+			}
 		}
 
 		return fmt::format("{}[{}]", sym_name, stmt.instr.index);
@@ -274,7 +304,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			stack.pop_back();
 		}
 
-		auto a = decompile_statement(script, a_instr, stack);
+		auto a = decompile_statement(script, a_instr, stack, locals);
 		auto sym = script.find_symbol_by_index(a_instr.instr.symbol);
 
 		stack_frame b_instr {opcode::pushi, 0, 0, 0, 0, 0};
@@ -282,7 +312,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 			b_instr = stack.back();
 			stack.pop_back();
 		}
-		auto b = decompile_statement(script, b_instr, stack);
+		auto b = decompile_statement(script, b_instr, stack, locals);
 
 		if (sym->type() == datatype::float_) {
 			return fmt::format("{} = {}", a, reinterpret_cast<float&>(b_instr.instr.immediate));
@@ -298,6 +328,7 @@ std::string decompile_statement(const script& script, const stack_frame& stmt, s
 }
 
 std::pair<std::string, std::uint32_t> decompile_block(const script& script,
+                                                      local_storage& locals,
                                                       int indent,
                                                       uint32_t pointer,
                                                       int64_t end_ptr = -1,
@@ -315,8 +346,9 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 				stack.pop_back();
 			}
 
-			code += fmt::format("{: >{}}if ({}) {{\n", "", indent, decompile_statement(script, real_stmt, stack));
-			auto [if_block, next_branch] = decompile_block(script, indent + 4, pointer, stmt.instr.address);
+			code +=
+			    fmt::format("{: >{}}if ({}) {{\n", "", indent, decompile_statement(script, real_stmt, stack, locals));
+			auto [if_block, next_branch] = decompile_block(script, locals, indent + 4, pointer, stmt.instr.address);
 			pointer = stmt.instr.address;
 
 			code += if_block + fmt::format("{: >{}}}}", "", indent);
@@ -333,9 +365,9 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 						stack.pop_back();
 					}
 
-					code += fmt::format(" else if ({}) {{\n", decompile_statement(script, real_stmt, stack));
+					code += fmt::format(" else if ({}) {{\n", decompile_statement(script, real_stmt, stack, locals));
 					auto [else_if_block, else_if_next_branch] =
-					    decompile_block(script, indent + 4, pointer, new_stmt.instr.address);
+					    decompile_block(script, locals, indent + 4, pointer, new_stmt.instr.address);
 					next_branch = else_if_next_branch;
 					pointer = new_stmt.instr.address;
 
@@ -344,10 +376,14 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 				} else {
 					// else block
 					code += fmt::format(" else {{\n");
-					code += fmt::format("{: >{}}{};\n", "", indent + 4, decompile_statement(script, new_stmt, stack));
+					code += fmt::format("{: >{}}{};\n",
+					                    "",
+					                    indent + 4,
+					                    decompile_statement(script, new_stmt, stack, locals));
 
 					if (pointer < next_branch) {
-						auto [else_block, else_next_branch] = decompile_block(script, indent + 4, pointer, next_branch);
+						auto [else_block, else_next_branch] =
+						    decompile_block(script, locals, indent + 4, pointer, next_branch);
 						next_branch = else_next_branch;
 						pointer = else_next_branch;
 						code += else_block;
@@ -361,13 +397,14 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 		} else if (stmt.instr.op == opcode::b) {
 			return {code, stmt.instr.address};
 		} else {
-			auto s = decompile_statement(script, stmt, stack);
+			auto s = decompile_statement(script, stmt, stack, locals);
 
 			if (!stack.empty()) {
 				auto unused_return = stack.back();
 				stack.pop_back();
 
-				code += fmt::format("{: >{}}{};\n", "", indent, decompile_statement(script, unused_return, stack));
+				code +=
+				    fmt::format("{: >{}}{};\n", "", indent, decompile_statement(script, unused_return, stack, locals));
 			}
 
 			if (!s.empty()) {
@@ -387,14 +424,31 @@ std::string decompile(const phoenix::script& script, const phoenix::symbol& sym,
 	current_symbol = &sym;
 	current_instance = (sym.type() == datatype::instance || sym.type() == datatype::prototype) ? sym.index() : unset;
 	std::vector<stack_frame> stack {};
+	local_storage locals {};
 	auto params = script.find_parameters_for_function(&sym);
 
-	auto result = decompile_block(script, indent, sym.address() + 6 * params.size(), -1, stack).first;
+	current_symbol_params.clear();
+	for (auto* param : params) {
+		current_symbol_params.insert(param->index());
+	}
+
+	auto result = decompile_block(script, locals, indent, sym.address() + 6 * params.size(), -1, stack).first;
+
+	std::string local_definitions {};
+	for (auto& local : locals) {
+		if (local.second->type() == phoenix::datatype::instance) {
+			local_definitions +=
+				fmt::format("{: >{}}var {} {};\n", "", indent, script.find_symbol_by_index(local.second->parent())->name(), local.first);
+		} else {
+			local_definitions +=
+				fmt::format("{: >{}}var {} {};\n", "", indent, get_type_name(local.second->type()), local.first);
+		}
+	}
 
 	// If the function does not return anything, remove the last return
 	if (!sym.has_return()) {
 		result.erase(result.rfind("return")).erase(result.rfind('\n') + 1);
 	}
 
-	return result;
+	return local_definitions + result;
 }

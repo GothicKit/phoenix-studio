@@ -12,7 +12,7 @@ execute_process(
 configure_file(config.hh.in ${CMAKE_CURRENT_BINARY_DIR}/config.hh @ONLY)
 
 add_executable(zscript main.cc decompiler.cc)
-target_link_libraries(zscript PRIVATE phoenix flags)
+target_link_libraries(zscript PRIVATE phoenix flags fmt)
 target_include_directories(zscript PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 set_target_properties(zscript

@@ -224,29 +224,6 @@ bool has_constant_value(const symbol& symbol) {
 	    symbol.type() != datatype::function;
 }
 
-constexpr std::string_view get_type_name(datatype tp) {
-	switch (tp) {
-	case datatype::void_:
-		return "void";
-	case datatype::float_:
-		return "float";
-	case datatype::integer:
-		return "int";
-	case datatype::string:
-		return "string";
-	case datatype::class_:
-		return "class";
-	case datatype::function:
-		return "func";
-	case datatype::prototype:
-		return "prototype";
-	case datatype::instance:
-		return "instance";
-	default:
-		return "*ERR*";
-	}
-}
-
 /// \brief Prints the value of a symbol
 /// \param symbol The symbol to print the value of
 std::string print_symbol_value(const symbol& symbol, int index = -1) {
