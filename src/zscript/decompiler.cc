@@ -390,6 +390,10 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 					}
 
 					code += fmt::format("{: >{}}}}", "", indent);
+					stmt = new_stmt;
+
+					// No additional `else`-blocks may follow!
+					break;
 				}
 			}
 
