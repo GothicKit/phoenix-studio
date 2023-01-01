@@ -172,10 +172,11 @@ int main(int argc, char** argv) {
 				fmt::print(" {{\n{}}}\n", decompile(scr, *sym, 4));
 			} else {
 				std::unordered_map<uint32_t, std::string> files;
+				std::unordered_map<uint32_t, std::string> file_names;
 				uint32_t skip = 0;
 
 				for (auto& s : scr.symbols()) {
-					if (s.name() == "$INSTANCE_HELP" || s.is_generated())
+					if (s.name() == "$INSTANCE_HELP" || s.is_generated() || s.name().find('.') != -1)
 						continue;
 
 					if (skip > 0) {
@@ -201,14 +202,24 @@ int main(int argc, char** argv) {
 
 					files[s.file_index()] += def + "\n";
 
+					if (!file_names.contains(s.file_index())) {
+						file_names[s.file_index()] = s.name();
+					}
+
 					fmt::print("Processed {}\n", s.name());
 				}
 
 				for (auto& idx : files) {
-					std::ofstream out {std::to_string(idx.first) + ".d"};
+					std::ofstream out {file_names[idx.first] + ".d"};
 					out << idx.second;
 					out.close();
 				}
+
+				std::ofstream src_file {"Gothic.src"};
+				for (auto& fn : file_names) {
+					src_file << fn.second << ".d\n";
+				}
+				src_file.close();
 			}
 		}
 	}
