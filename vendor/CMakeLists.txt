@@ -4,7 +4,12 @@ option(PHOENIX_BUILD_TOOLS OFF)
 option(PHOENIX_DISABLE_SANITIZERS ${PSTUDIO_DISABLE_SANITIZERS})
 
 add_subdirectory(phoenix)
+add_subdirectory(json)
 add_subdirectory(flags)
+add_subdirectory(fmt)
+
+set(CLI11_PRECOMPILED ON)
+add_subdirectory(CLI11)
 
 # add stb as a library
 add_library(stb INTERFACE)

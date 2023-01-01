@@ -10,3 +10,14 @@
 	path = vendor/phoenix
 	url = https://github.com/lmichaelis/phoenix.git
 	shallow = true
+[submodule "vendor/CLI11"]
+	path = vendor/CLI11
+	url = https://github.com/CLIUtils/CLI11.git
+	branch = main
+[submodule "vendor/json"]
+	path = vendor/json
+	url = https://github.com/nlohmann/json
+	branch = master
+[submodule "vendor/fmt"]
+	path = vendor/fmt
+	url = https://github.com/fmtlib/fmt

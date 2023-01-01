@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(phoenix.tools.zinfo VERSION 0.1.0)
+project(pstudio.zdump VERSION 0.1.0)
 
 
 execute_process(
@@ -11,8 +11,8 @@ execute_process(
 
 configure_file(config.hh.in ${CMAKE_CURRENT_BINARY_DIR}/config.hh @ONLY)
 
-add_executable(zdump main.cc dump_text.cc dump_json.cc util/base64.cc)
-target_link_libraries(zdump PRIVATE phoenix flags)
+add_executable(zdump main.cc dump.cc)
+target_link_libraries(zdump PRIVATE phoenix CLI11 nlohmann_json fmt)
 target_include_directories(zdump PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 set_target_properties(zdump PROPERTIES

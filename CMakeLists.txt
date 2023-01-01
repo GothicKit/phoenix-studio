@@ -3,7 +3,7 @@ project(phoenix-studio)
 
 option(PSTUDIO_DISABLE_SANITIZERS "Build without sanitizers in debug mode" OFF)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 if (MSVC)
     # enable all warnings
