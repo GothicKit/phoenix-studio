@@ -1,13 +1,13 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
-#include "phoenix/texture.hh"
-#include "phoenix/vdfs.hh"
+#include <phoenix/texture.hh>
+#include <phoenix/vdfs.hh>
 
-#include "flags.h"
-#include "fmt/format.h"
+#include <flags.h>
+#include <fmt/format.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include <stb_image_write.h>
 
 #include <iostream>
 
@@ -62,7 +62,7 @@ static void write_tga(const std::optional<std::string>& file,
 px::buffer open_buffer(const std::optional<std::string>& input, const std::optional<std::string>& vdf) {
 	if (input) {
 		if (vdf) {
-			auto container = px::vdf_file::open(*vdf);
+			const auto container = px::vdf_file::open(*vdf);
 			if (auto* entry = container.find_entry(*input); entry != nullptr) {
 				return entry->open();
 			} else {

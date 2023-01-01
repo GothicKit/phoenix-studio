@@ -152,7 +152,7 @@ dump_wavefront(std::ostream& out, std::ostream* material_out, std::string_view m
 px::buffer open_buffer(const std::optional<std::string>& input, const std::optional<std::string>& vdf) {
 	if (input) {
 		if (vdf) {
-			auto container = px::vdf_file::open(*vdf);
+			const auto container = px::vdf_file::open(*vdf);
 			if (auto* entry = container.find_entry(*input); entry != nullptr) {
 				return entry->open();
 			} else {

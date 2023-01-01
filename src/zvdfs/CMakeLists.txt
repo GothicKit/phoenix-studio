@@ -12,7 +12,7 @@ execute_process(
 configure_file(config.hh.in ${CMAKE_CURRENT_BINARY_DIR}/config.hh @ONLY)
 
 add_executable(zvdfs main.cc)
-target_link_libraries(zvdfs PRIVATE phoenix flags)
+target_link_libraries(zvdfs PRIVATE phoenix flags fmt)
 target_include_directories(zvdfs PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 set_target_properties(zvdfs

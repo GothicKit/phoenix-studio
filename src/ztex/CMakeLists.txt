@@ -12,7 +12,7 @@ execute_process(
 configure_file(config.hh.in ${CMAKE_CURRENT_BINARY_DIR}/config.hh @ONLY)
 
 add_executable(ztex main.cc)
-target_link_libraries(ztex PRIVATE phoenix flags stb)
+target_link_libraries(ztex PRIVATE phoenix flags stb fmt)
 target_include_directories(ztex PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 set_target_properties(ztex
