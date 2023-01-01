@@ -348,6 +348,12 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 
 			code +=
 			    fmt::format("{: >{}}if ({}) {{\n", "", indent, decompile_statement(script, real_stmt, stack, locals));
+
+			if (pointer == stmt.instr.address) {
+				code += fmt::format("{: >{}}}};\n", "", indent);
+				continue;
+			}
+
 			auto [if_block, next_branch] = decompile_block(script, locals, indent + 4, pointer, stmt.instr.address);
 			pointer = stmt.instr.address;
 
@@ -366,6 +372,12 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 					}
 
 					code += fmt::format(" else if ({}) {{\n", decompile_statement(script, real_stmt, stack, locals));
+
+					if (pointer == new_stmt.instr.address) {
+						code += fmt::format("{: >{}}}};\n", "", indent);
+						continue;
+					}
+
 					auto [else_if_block, else_if_next_branch] =
 					    decompile_block(script, locals, indent + 4, pointer, new_stmt.instr.address);
 					next_branch = else_if_next_branch;
@@ -376,6 +388,12 @@ std::pair<std::string, std::uint32_t> decompile_block(const script& script,
 				} else {
 					// else block
 					code += fmt::format(" else {{\n");
+
+					if (pointer == new_stmt.instr.address) {
+						code += fmt::format("{: >{}}}};\n", "", indent);
+						break;
+					}
+
 					code += fmt::format("{: >{}}{};\n",
 					                    "",
 					                    indent + 4,
