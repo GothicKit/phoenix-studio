@@ -1,9 +1,9 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
-#include "phoenix/vdfs.hh"
+#include <phoenix/vdfs.hh>
 
-#include "flags.h"
-#include "fmt/format.h"
+#include <CLI/App.hpp>
+#include <fmt/format.h>
 
 #include <filesystem>
 #include <fstream>
@@ -13,34 +13,6 @@
 
 namespace fs = std::filesystem;
 namespace px = phoenix;
-
-static constexpr const auto HELP_MESSAGE =
-    R"(USAGE
-    zvdfs -v
-    zvdfs -h
-    zvdfs -l [-f FILE]
-    zvdfs -x [NAME] [-o PATH]
-
-
-DESCRIPTION
-    Extracts or lists files from VDF archives. For machine readable output, see zdump.
-
-OPTIONS
-    -v, --version                  Print the version of zvdfs
-    -h, --help                     Print this help message
-    -f, --file                     Read the VDF from FILE instead of stdin
-    -l, --list                     Print a list of all files in the VDF.
-	-o PATH, --output PATH         Write data to the given path instead of stdout.
-    -x [NAME], --extract [NAME]    Extract one or multiple files from the VDF.
-                                   If NAME is not specified, extract all files from the VDF
-                                   into the current working directory or the path specified
-                                   with -o. If NAME is specified, extract the file with the
-                                   same name from the VDF and write its content to stdout or
-                                   the file given with -o.
-
-VERSION
-    phoenix zvdfs v{}
-)";
 
 static void do_extract(const fs::path& base,
                        const fs::path& self,
@@ -75,21 +47,34 @@ static void do_list(const fs::path& self, const std::set<phoenix::vdf_entry, pho
 }
 
 int main(int argc, char** argv) {
-	const flags::args args {argc, argv};
+	px::logging::use_default_logger();
 
-	std::optional<std::string> input = args.get<std::string>("f");
-	if (!input)
-		input = args.get<std::string>("file");
+	CLI::App app {"Extracts or lists files from VDF archives."};
+
+	bool display_version {false};
+	app.add_flag("-v,--version", display_version, "Print version information");
+
+	std::optional<std::string> file {};
+	app.add_option("-f,--file", file, "Read the VDF from FILE instead of stdin.");
+
+	bool action_list {false};
+	app.add_flag("-l,--list", action_list, "Print a list of all files in the VDF.");
+
+	std::optional<std::string> extract {};
+	app.add_option("-x,--extract", extract, "Extract the file or directory with the given name.");
+
+	std::optional<std::string> output {};
+	app.add_option("-o,--output", output, "Output extracted files to the given path");
+
+	CLI11_PARSE(app, argc, argv);
 
 	try {
-		if (args.get<bool>("v", false) || args.get<bool>("version", false)) {
+		if (display_version) {
 			fmt::print("zvdfs v{}\n", ZVDFS_VERSION);
-		} else if (args.get<bool>("h", false) || args.get<bool>("help", false)) {
-			fmt::print(HELP_MESSAGE, ZVDFS_VERSION);
 		} else {
 			auto in = px::buffer::empty();
-			if (input) {
-				in = px::buffer::mmap(*input);
+			if (file) {
+				in = px::buffer::mmap(*file);
 			} else {
 				std::vector<std::byte> data {};
 
@@ -107,14 +92,11 @@ int main(int argc, char** argv) {
 				in = phoenix::buffer::of(std::move(data));
 			}
 
-			if (args.get<bool>("l", false) || args.get<bool>("list", false)) {
+			if (action_list) {
 				auto vdf = phoenix::vdf_file::open(in);
 				do_list("", vdf.entries);
-			} else if (args.get<bool>("x", false) || args.get<bool>("extract", false)) {
-				std::optional<std::string> extract;
-				(extract = args.get<std::string>("x")) || (extract = args.get<std::string>("extract"));
-
-				auto vdf = phoenix::vdf_file::open(in);
+			} else if (extract) {
+				const auto vdf = phoenix::vdf_file::open(in);
 				if (extract) {
 					auto* entry = vdf.find_entry(*extract);
 					if (entry == nullptr) {
@@ -125,7 +107,7 @@ int main(int argc, char** argv) {
 					auto buf = entry->open();
 
 					std::optional<std::string> output_arg;
-					if ((output_arg = args.get<std::string>("o")) || (output_arg = args.get<std::string>("output"))) {
+					if (output) {
 						std::ofstream out {*output_arg, std::ios::binary};
 						out.write((const char*) buf.array(), buf.limit());
 						out.close();
@@ -134,7 +116,7 @@ int main(int argc, char** argv) {
 					}
 				} else {
 					std::optional<std::string> output_arg;
-					if ((output_arg = args.get<std::string>("o")) || (output_arg = args.get<std::string>("output"))) {
+					if (output) {
 						if (!fs::is_directory(*output_arg)) {
 							fmt::print(stderr, "the output directory does not exist.\n");
 							return EXIT_FAILURE;
