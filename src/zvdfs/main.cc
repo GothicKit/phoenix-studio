@@ -42,7 +42,9 @@ VERSION
     phoenix zvdfs v{}
 )";
 
-static void do_extract(const fs::path& base, const fs::path& self, const std::set<phoenix::vdf_entry, phoenix::vdf_entry_comparator>& entries) {
+static void do_extract(const fs::path& base,
+                       const fs::path& self,
+                       const std::set<phoenix::vdf_entry, phoenix::vdf_entry_comparator>& entries) {
 	for (const auto& entry : entries) {
 		auto new_self = self / entry.name;
 		auto output = base / new_self;

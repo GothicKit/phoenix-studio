@@ -459,11 +459,14 @@ std::string decompile(const phoenix::script& script, const phoenix::symbol& sym,
 	std::string local_definitions {};
 	for (auto& local : locals) {
 		if (local.second->type() == phoenix::datatype::instance) {
-			local_definitions +=
-				fmt::format("{: >{}}var {} {};\n", "", indent, script.find_symbol_by_index(local.second->parent())->name(), local.first);
+			local_definitions += fmt::format("{: >{}}var {} {};\n",
+			                                 "",
+			                                 indent,
+			                                 script.find_symbol_by_index(local.second->parent())->name(),
+			                                 local.first);
 		} else {
 			local_definitions +=
-				fmt::format("{: >{}}var {} {};\n", "", indent, get_type_name(local.second->type()), local.first);
+			    fmt::format("{: >{}}var {} {};\n", "", indent, get_type_name(local.second->type()), local.first);
 		}
 	}
 
