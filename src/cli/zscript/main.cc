@@ -1,9 +1,9 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
-#include "phoenix/script.hh"
+#include <phoenix/script.hh>
 
-#include "flags.h"
-#include "fmt/format.h"
+#include <CLI/App.hpp>
+#include <fmt/format.h>
 
 #include <fstream>
 #include <string>
@@ -13,55 +13,6 @@
 #include "decompiler.hh"
 
 using namespace phoenix;
-
-static constexpr const auto HELP_MESSAGE =
-    R"(USAGE
-    zscript -v
-    zscript -h
-    zscript -t [-f FILE] [-I FLAGS] [-E FLAGS] [-f TERM] [-s NAME]
-    zscript -d [-f FILE] [-s NAME]
-    zscript -u -s NAME [-f FILE]
-    zscript -k -s NAME [-f FILE]
-
-DESCRIPTION
-    Dumps symbols and bytecode from compiled Daedalus script files. Can also
-    decompile function, prototype and instance code.
-
-OPTIONS
-    -v, --version               Print the version of zdump
-    -h, --help                  Print this help message
-    -f FILE, --input FILE       If specified, reads the given file from disk instead of stdin
-                                (unless -e is specified).
-    -s NAME, --symbol NAME      Dump data only for the symbol with the given NAME
-    -I FLAGS, --include FLAGS   Only display symbols with any of these FLAGS
-    -E FLAGS, --exclude FLAGS   Only display symbols without any of these FLAGS
-    -c TERM, --find TERM        Only display symbols where the name contains TERM
-    -t, --symbols               Display a list of symbols filtered by the given parameters or
-                                information about the symbol passed via -s.
-    -d, --disassemble           Print a disassembly of the file or the symbol passed via -s.
-    -u, --usages                Print a list of all bytecode instructions referencing the symbol
-                                passed via -s.
-    -k, --decompile             Print a decompilation of the symbol passed via -s.
-
-
-FLAGS
-    c - const symbols
-    r - symbols that have a return value
-    m - member symbol_name
-    e - extern symbols
-    M - merged symbols
-    g - generated symbols
-    v - symbols of type void
-    f - symbols of type float
-    i - symbols of type int
-    s - symbols of type string
-    C - classes
-    F - functions
-    P - prototypes
-    I - instances
-
-VERSION
-    phoenix zscript v{})";
 
 #define PRINT_FLAG(cond, flag)                                                                                         \
 	if (cond) {                                                                                                        \
@@ -85,57 +36,52 @@ std::string print_definition(const script& scr, const symbol& sym, const symbol*
 void find_usages(const script& scr, const symbol& sym);
 
 int main(int argc, char** argv) {
-	const flags::args args {argc, argv};
 	phoenix::logging::use_default_logger();
 
-	std::optional<std::string> input {};
-	std::optional<std::string> symbol_name {};
-	std::optional<std::string> include {};
-	std::optional<std::string> exclude {};
-	std::optional<std::string> search {};
+	CLI::App app {"Inspect ZenGin script files."};
+
+	bool display_version {false};
+	app.add_flag("-v,--version", display_version, "Print version information");
+
+	std::optional<std::string> file {};
+	app.add_option("-f,--file", file, "Operate on this file from disk or a VDF if -e is specified");
+
+	std::optional<std::string> vdf {};
+	app.add_option("-e,--vdf", vdf, "Open the given file from this VDF");
+
 	bool action_symbolize = false;
 	bool action_disassemble = false;
 	bool action_usages = false;
 	bool action_decompile = false;
+	app.add_flag("-t,--symbols", action_symbolize, "Print a list of all symbols or details of the symbol passed using -s");
+	app.add_flag("-d,--disassemble", action_disassemble, "Print the disassembly of the symbol passed using -s");
+	app.add_flag("-u,--usages", action_usages, "Print the locations of all usages of the symbol passed using -s");
+	app.add_flag("-k,--decompile", action_decompile, "Print a decompilation of the symbol passed using -s");
 
-	action_symbolize = args.get<bool>("t") || args.get<bool>("symbols");
-	action_disassemble = args.get<bool>("d") || args.get<bool>("disassemble");
-	action_usages = args.get<bool>("u") || args.get<bool>("usages");
-	action_decompile = args.get<bool>("k") || args.get<bool>("decompile");
+	std::optional<std::string> symbol_name {};
+	app.add_option("-s,--symbol", symbol_name, "The name of a symbol to inspect");
 
-	input = args.get<std::string>("f");
-	if (!input)
-		input = args.get<std::string>("file");
+	std::optional<std::string> include {};
+	app.add_option("-i,--include", include, "Only display symbols with any of the given flags (only relevant for -t)");
 
-	search = args.get<std::string>("c");
-	if (!search)
-		search = args.get<std::string>("find");
+	std::optional<std::string> exclude {};
+	app.add_option("-x,--exclude", exclude, "Only display symbols without any of the given flags (only relevant for -t)");
 
-	include = args.get<std::string>("I");
-	if (!include)
-		include = args.get<std::string>("include");
+	std::optional<std::string> search {};
+	app.add_option("-c,--find", search, "Only display symbols where the name contains the given perm (only relevant for -t)");
 
-	exclude = args.get<std::string>("E");
-	if (!exclude)
-		exclude = args.get<std::string>("exclude");
+	CLI11_PARSE(app, argc, argv);
 
-	symbol_name = args.get<std::string>("s");
-	if (!symbol_name)
-		symbol_name = args.get<std::string>("symbol");
-
-	if (args.get<bool>("v") || args.get<bool>("version")) {
+	if (display_version) {
 		fmt::print("zscript v{}\n", ZSCRIPT_VERSION);
 		return EXIT_SUCCESS;
-	} else if (args.get<bool>("h") || args.get<bool>("help")) {
-		fmt::print(HELP_MESSAGE, ZSCRIPT_VERSION);
-		return EXIT_SUCCESS;
 	} else {
-		if (!input) {
+		if (!file) {
 			fmt::print(stderr, "no input file given");
 			return EXIT_FAILURE;
 		}
 
-		auto scr = script::parse(*input);
+		auto scr = script::parse(*file);
 		const symbol* sym = nullptr;
 
 		if (symbol_name) {
