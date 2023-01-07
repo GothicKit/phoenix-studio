@@ -1,4 +1,4 @@
-add_subdirectory(zmodel)
+add_subdirectory(cli/zmodel)
 add_subdirectory(cli/ztex)
 add_subdirectory(cli/zdump)
 add_subdirectory(cli/zscript)

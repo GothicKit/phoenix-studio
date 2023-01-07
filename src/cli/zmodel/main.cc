@@ -1,13 +1,13 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
-#include "phoenix/model.hh"
-#include "phoenix/morph_mesh.hh"
-#include "phoenix/proto_mesh.hh"
-#include "phoenix/vdfs.hh"
-#include "phoenix/world.hh"
+#include <phoenix/model.hh>
+#include <phoenix/morph_mesh.hh>
+#include <phoenix/proto_mesh.hh>
+#include <phoenix/vdfs.hh>
+#include <phoenix/world.hh>
 
-#include "flags.h"
-#include "fmt/format.h"
+#include <CLI/App.hpp>
+#include <fmt/format.h>
 
 #include <fstream>
 #include <iostream>
@@ -15,29 +15,6 @@
 #include "config.hh"
 
 namespace px = phoenix;
-
-static constexpr const auto HELP_MESSAGE =
-    R"(USAGE
-    zmodel -v
-    zmodel -h
-    zmodel -f FILE [-e VDF] [-o PATH] [-g1] [-g2] [-m PATH]
-
-DESCRIPTION
-    Converts ZenGin models to Wavefront (.obj) models
-
-OPTIONS
-    -v, --version              Print the version of zmodel
-    -h, --help                 Print this help message
-    -f FILE, --input FILE      The file to convert.
-    -o PATH, --output PATH     Write data to the given path instead of stdout.
-    -e VDF, --vdf VDF          Instead of reading FILE directly from disk, extract it from VDF instead.
-    -m PATH, --material PATH   Also write a material file to PATH
-    -g1                        Parse a Gothic 1 world file
-    -g2                        Parse a Gothic 2 world file (default)
-
-VERSION
-    phoenix zdump v{}
-)";
 
 static void dump_material(std::ostream& mtl, std::string_view name, const std::vector<phoenix::material>& materials) {
 	for (const auto& mat : materials) {
@@ -75,9 +52,9 @@ static void dump_wavefront(std::ostream& out,
 		}
 
 		for (const auto& item : msh.triangles) {
-			auto wedge0 = msh.wedges[wedge_offset + item.wedges[0]];
-			auto wedge1 = msh.wedges[wedge_offset + item.wedges[1]];
-			auto wedge2 = msh.wedges[wedge_offset + item.wedges[2]];
+			auto wedge0 = msh.wedges[item.wedges[0]];
+			auto wedge1 = msh.wedges[item.wedges[1]];
+			auto wedge2 = msh.wedges[item.wedges[2]];
 
 			out << "f " << wedge0.index + 1 << "/" << wedge_offset + item.wedges[0] + 1 << "/"
 			    << wedge_offset + item.wedges[0] + 1 << " " << wedge1.index + 1 << "/"
@@ -181,36 +158,38 @@ px::buffer open_buffer(const std::optional<std::string>& input, const std::optio
 }
 
 int main(int argc, char** argv) {
-	const flags::args args {argc, argv};
 	px::logging::use_default_logger();
 
-	if (args.get<bool>("v") || args.get<bool>("version")) {
+	CLI::App app {"Dump ZenGin files to JSON."};
+
+	bool display_version {false};
+	app.add_flag("-v,--version", display_version, "Print version information");
+
+	std::optional<std::string> file {};
+	app.add_option("-f,--file", file, "Operate on this file from disk or a VDF if -e is specified");
+
+	std::optional<std::string> vdf {};
+	app.add_option("-e,--vdf", vdf, "Open the given file from this VDF");
+
+	std::optional<std::string> output {};
+	app.add_option("-o,--output", output, "Write data to the given path instead of stdout.");
+
+	std::optional<std::string> material {};
+	app.add_option("-m,--material", material, "Also write a material file to the given path");
+
+	CLI11_PARSE(app, argc, argv);
+
+	if (display_version) {
 		fmt::print("zmodel v{}\n", ZMODEL_VERSION);
-	} else if (args.get<bool>("h") || args.get<bool>("help")) {
-		fmt::print(HELP_MESSAGE, ZMODEL_VERSION);
 	} else {
 		try {
-			auto input = args.get<std::string>("f");
-			if (!input && !(input = args.get<std::string>("file"))) {
+			if (!file) {
 				fmt::print(stderr, "no input file given\n");
 				return EXIT_FAILURE;
 			}
 
-			auto vdf = args.get<std::string>("e");
-			if (!vdf)
-				vdf = args.get<std::string>("vdf");
-
-			auto output = args.get<std::string>("o");
-			if (!output)
-				output = args.get<std::string>("output");
-
-			auto material = args.get<std::string>("m");
-			if (!material)
-				material = args.get<std::string>("material");
-
-			auto g1 = args.get<bool>("g1").value_or(!args.get<bool>("g2").value_or(true));
-			auto in = open_buffer(input, vdf);
-			auto extension = input->substr(input->find('.') + 1);
+			auto in = open_buffer(file, vdf);
+			auto extension = file->substr(file->find('.') + 1);
 
 			std::ostream* model_out = &std::cout;
 			if (output)
@@ -218,15 +197,13 @@ int main(int argc, char** argv) {
 
 			std::ostream* material_out = nullptr;
 			if (material)
-				material_out = new std::ofstream {*output};
+				material_out = new std::ofstream {*material};
 
 			if (phoenix::iequals(extension, "MRM")) {
 				auto mesh = phoenix::proto_mesh::parse(in);
 				dump_wavefront(*model_out, material_out, material.value_or(""), mesh);
 			} else if (phoenix::iequals(extension, "ZEN")) {
-				auto wld =
-				    phoenix::world::parse(in, g1 ? phoenix::game_version::gothic_1 : phoenix::game_version::gothic_2);
-
+				auto wld = phoenix::world::parse(in);
 				dump_wavefront(*model_out, material_out, material.value_or(""), wld.world_mesh);
 			} else if (phoenix::iequals(extension, "MSH")) {
 				auto msh = phoenix::mesh::parse(in, {});
@@ -249,6 +226,13 @@ int main(int argc, char** argv) {
 			} else {
 				fmt::print(stderr, "format not supported: {}", extension);
 				return EXIT_FAILURE;
+			}
+
+			model_out->flush();
+
+			if (material_out != nullptr) {
+				material_out->flush();
+				delete material_out;
 			}
 		} catch (const std::exception& e) {
 			fmt::print(stderr, "cannot convert model: {}", e.what());
