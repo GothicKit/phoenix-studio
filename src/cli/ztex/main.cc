@@ -3,7 +3,7 @@
 #include <phoenix/texture.hh>
 #include <phoenix/vdfs.hh>
 
-#include <flags.h>
+#include <CLI/App.hpp>
 #include <fmt/format.h>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -23,7 +23,7 @@ static constexpr const auto HELP_MESSAGE =
     ztex [ -f FILE [-e VDF] ] [-o PATH] [-m LEVEL]
 
 DESCRIPTION
-    Converts ZenGin textures from the ZTEX to the TGA format. Optionally, dumps all
+     Optionally, dumps all
     mipmap versions of the texture.
 
 OPTIONS
@@ -33,10 +33,10 @@ OPTIONS
                                    stdin (unless -e is specified).
     -e VDF, --vdf VDF              Instead of reading FILE directly from disk, extract it
                                    from VDF instead.
-    -o PATH, --output PATH         Write data to the given path instead of stdout (required with -a).
-    -m LEVEL, --mipmap LEVEL       Instead of dumping the largest mipmap, dump the mipmap
+    -o PATH, --output PATH
+    -m LEVEL, --mipmap LEVEL
                                    with the given LEVEL
-    -a, --all-mipmaps              Dump all mipmaps of the texture to the current working directory
+    -a, --all-mipmaps
                                    or PATH if (-o) is specified.
 
 VERSION
@@ -91,38 +91,43 @@ px::buffer open_buffer(const std::optional<std::string>& input, const std::optio
 }
 
 int main(int argc, char** argv) {
-	const flags::args args {argc, argv};
 	px::logging::use_default_logger();
 
-	if (args.get<bool>("v") || args.get<bool>("version")) {
+	CLI::App app {"Dump ZenGin files to JSON."};
+
+	bool display_version {false};
+	app.add_flag("-v,--version", display_version, "Print version information");
+
+	std::string file {};
+	app.add_option("-f,--file", file, "Operate on this file from disk or a VDF if -e is specified");
+
+	std::optional<std::string> vdf {};
+	app.add_option("-e,--vdf", vdf, "Open the given file from this VDF");
+
+	std::optional<std::string> output {};
+	app.add_option("-o,--output", vdf, "Write data to the given path instead of stdout (required with -a).");
+
+	std::optional<unsigned> level {};
+	app.add_option("-m,--mipmap", vdf, "Instead of dumping the largest mipmap, dump the mipmap with this level");
+
+	bool all_mipmaps {false};
+	app.add_flag("-a,--all-mipmaps",
+	             all_mipmaps,
+	             "Dump all mipmaps of the texture to the current working directory or -o");
+
+	CLI11_PARSE(app, argc, argv);
+
+	if (display_version) {
 		fmt::print("ztex v{}\n", ZTEX_VERSION);
-	} else if (args.get<bool>("h") || args.get<bool>("help")) {
-		fmt::print(HELP_MESSAGE, ZTEX_VERSION);
 	} else {
 		try {
-			auto input = args.get<std::string>("f");
-			if (!input)
-				input = args.get<std::string>("file");
-
-			auto vdf = args.get<std::string>("e");
-			if (!vdf)
-				vdf = args.get<std::string>("vdf");
-
-			auto output = args.get<std::string>("o");
-			if (!output)
-				output = args.get<std::string>("output");
-
-			auto level = args.get<int>("m");
-			if (!level)
-				level = args.get<int>("mipmap");
-
-			auto in = open_buffer(input, vdf);
+			auto in = open_buffer(file, vdf);
 			if (in == px::buffer::empty())
 				return EXIT_FAILURE;
 
 			auto texture = phoenix::texture::parse(in);
 
-			if (args.get<bool>("a") || args.get<bool>("all-mipmaps")) {
+			if (all_mipmaps) {
 				if (!std::filesystem::is_directory(*output)) {
 					fmt::print(stderr, "the output directory does not exist.\n");
 					return EXIT_FAILURE;
