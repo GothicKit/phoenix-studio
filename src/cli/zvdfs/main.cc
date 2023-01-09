@@ -104,6 +104,11 @@ int main(int argc, char** argv) {
 						return EXIT_FAILURE;
 					}
 
+					if (entry->is_directory()) {
+						do_extract(output.value_or("."), "", entry->children);
+						return EXIT_SUCCESS;
+					}
+
 					auto buf = entry->open();
 
 					std::optional<std::string> output_arg;
@@ -115,14 +120,13 @@ int main(int argc, char** argv) {
 						std::cout.write((const char*) buf.array(), buf.limit());
 					}
 				} else {
-					std::optional<std::string> output_arg;
 					if (output) {
-						if (!fs::is_directory(*output_arg)) {
+						if (!fs::is_directory(*output)) {
 							fmt::print(stderr, "the output directory does not exist.\n");
 							return EXIT_FAILURE;
 						}
 
-						do_extract(*output_arg, "", vdf.entries);
+						do_extract(*output, "", vdf.entries);
 					} else {
 						do_extract(".", "", vdf.entries);
 					}
