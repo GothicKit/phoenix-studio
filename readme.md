@@ -15,6 +15,8 @@ a game engine created by [Piranha Bytes](https://www.piranha-bytes.com/) for the
 Currently, it contains simple command-line utilities for reading and converting data files used for *Gothic* and 
 *Gothic II*.
 
+If you have any questions you can open a discussion on this repo or contact me on Discord, ideally by pinging me (lmichaelis#6242) in the [GMC Discord](https://discord.gg/mCpS5b5SUY) in the _tools_ channel.
+
 ## contributing
 If you'd like to contribute, please read [contributing](contributing.md) first.
 
