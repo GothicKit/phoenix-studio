@@ -240,7 +240,7 @@ std::string decompile_statement(const script& script,
 				sym_name = sym->name().substr(dot + 1);
 
 				if (sym->name().substr(0, dot) == current_symbol->name() &&
-				    !current_symbol_params.contains(sym->index())) {
+				    current_symbol_params.find(sym->index()) == current_symbol_params.end()) {
 					if (locals.find(sym_name) == locals.end()) {
 						locals[sym_name] = sym;
 					}
@@ -280,7 +280,7 @@ std::string decompile_statement(const script& script,
 				sym_name = sym->name().substr(dot + 1);
 
 				if (sym->name().substr(0, dot) == current_symbol->name() &&
-				    !current_symbol_params.contains(sym->index())) {
+				    current_symbol_params.find(sym->index()) == current_symbol_params.end()) {
 					if (locals.find(sym_name) == locals.end()) {
 						locals[sym_name] = sym;
 					}

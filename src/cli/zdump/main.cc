@@ -97,7 +97,7 @@ file_format detect_file_format(px::buffer&& buf) {
 			buf.reset();
 			return file_format::mds;
 		}
-	} while (line.starts_with("/") || line.empty());
+	} while (line[0] == '/' || line.empty());
 
 	buf.reset();
 	if (buf.get_line() == "ZenGin Archive") {

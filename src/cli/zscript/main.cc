@@ -125,11 +125,6 @@ int main(int argc, char** argv) {
 					if (s.name() == "$INSTANCE_HELP" || s.is_generated() || s.name().find('.') != -1)
 						continue;
 
-					if (skip > 0) {
-						skip--;
-						continue;
-					}
-
 					if (files.find(s.file_index()) == files.end()) {
 						files[s.file_index()] = {};
 					}
@@ -142,13 +137,9 @@ int main(int argc, char** argv) {
 						def += fmt::format(" {{\n{}}}\n", decompile(scr, s, 4));
 					}
 
-					if (s.type() == datatype::function) {
-						skip = s.count();
-					}
-
 					files[s.file_index()] += def + "\n";
 
-					if (!file_names.contains(s.file_index())) {
+					if (file_names.find(s.file_index()) == file_names.end()) {
 						file_names[s.file_index()] = s.name();
 					}
 
