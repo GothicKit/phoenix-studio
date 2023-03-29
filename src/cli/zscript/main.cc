@@ -53,7 +53,9 @@ int main(int argc, char** argv) {
 	bool action_disassemble = false;
 	bool action_usages = false;
 	bool action_decompile = false;
-	app.add_flag("-t,--symbols", action_symbolize, "Print a list of all symbols or details of the symbol passed using -s");
+	app.add_flag("-t,--symbols",
+	             action_symbolize,
+	             "Print a list of all symbols or details of the symbol passed using -s");
 	app.add_flag("-d,--disassemble", action_disassemble, "Print the disassembly of the symbol passed using -s");
 	app.add_flag("-u,--usages", action_usages, "Print the locations of all usages of the symbol passed using -s");
 	app.add_flag("-k,--decompile", action_decompile, "Print a decompilation of the symbol passed using -s");
@@ -65,10 +67,14 @@ int main(int argc, char** argv) {
 	app.add_option("-i,--include", include, "Only display symbols with any of the given flags (only relevant for -t)");
 
 	std::optional<std::string> exclude {};
-	app.add_option("-x,--exclude", exclude, "Only display symbols without any of the given flags (only relevant for -t)");
+	app.add_option("-x,--exclude",
+	               exclude,
+	               "Only display symbols without any of the given flags (only relevant for -t)");
 
 	std::optional<std::string> search {};
-	app.add_option("-c,--find", search, "Only display symbols where the name contains the given perm (only relevant for -t)");
+	app.add_option("-c,--find",
+	               search,
+	               "Only display symbols where the name contains the given perm (only relevant for -t)");
 
 	CLI11_PARSE(app, argc, argv);
 
