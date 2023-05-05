@@ -1,6 +1,6 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
-#include <phoenix/vdfs.hh>
+#include <phoenix/Vfs.hh>
 
 #include <CLI/App.hpp>
 #include <fmt/format.h>
@@ -16,14 +16,14 @@ namespace px = phoenix;
 
 static void do_extract(const fs::path& base,
                        const fs::path& self,
-                       const std::set<phoenix::vdf_entry, phoenix::vdf_entry_comparator>& entries) {
+                       const std::vector<phoenix::VfsNode>& entries) {
 	for (const auto& entry : entries) {
-		auto new_self = self / entry.name;
+		auto new_self = self / entry.name();
 		auto output = base / new_self;
 
-		if (entry.is_directory()) {
+		if (entry.type() == phoenix::VfsNodeType::DIRECTORY) {
 			fs::create_directory(output);
-			do_extract(base, new_self, entry.children);
+			do_extract(base, new_self, entry.children());
 		} else {
 			auto content = entry.open();
 
@@ -34,14 +34,14 @@ static void do_extract(const fs::path& base,
 	}
 }
 
-static void do_list(const fs::path& self, const std::set<phoenix::vdf_entry, phoenix::vdf_entry_comparator>& entries) {
-	for (const phoenix::vdf_entry& entry : entries) {
-		auto path = self / entry.name;
+static void do_list(const fs::path& self, const std::vector<phoenix::VfsNode>& entries) {
+	for (const phoenix::VfsNode& entry : entries) {
+		auto path = self / entry.name();
 
 		fmt::print("{}\n", path.string<char>());
 
-		if (entry.is_directory()) {
-			do_list(path, entry.children);
+		if (entry.type() == phoenix::VfsNodeType::DIRECTORY) {
+			do_list(path, entry.children());
 		}
 	}
 }
@@ -92,20 +92,21 @@ int main(int argc, char** argv) {
 				in = phoenix::buffer::of(std::move(data));
 			}
 
+			phoenix::Vfs vfs {};
+			vfs.mount_disk(in);
+
 			if (action_list) {
-				auto vdf = phoenix::vdf_file::open(in);
-				do_list("", vdf.entries);
+				do_list("", vfs.root().children());
 			} else if (extract) {
-				const auto vdf = phoenix::vdf_file::open(in);
 				if (extract) {
-					auto* entry = vdf.find_entry(*extract);
+					auto* entry = vfs.find(*extract);
 					if (entry == nullptr) {
 						fmt::print(stderr, "cannot extract entry {}: not found\n", *extract);
 						return EXIT_FAILURE;
 					}
 
-					if (entry->is_directory()) {
-						do_extract(output.value_or("."), "", entry->children);
+					if (entry->type() == phoenix::VfsNodeType::DIRECTORY) {
+						do_extract(output.value_or("."), "", entry->children());
 						return EXIT_SUCCESS;
 					}
 
@@ -126,9 +127,9 @@ int main(int argc, char** argv) {
 							return EXIT_FAILURE;
 						}
 
-						do_extract(*output, "", vdf.entries);
+						do_extract(*output, "", vfs.root().children());
 					} else {
-						do_extract(".", "", vdf.entries);
+						do_extract(".", "", vfs.root().children());
 					}
 				}
 			}

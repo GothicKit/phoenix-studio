@@ -1,13 +1,7 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
-#include "phoenix/animation.hh"
-#include "phoenix/font.hh"
-#include "phoenix/mesh.hh"
-#include "phoenix/messages.hh"
-#include "phoenix/model_hierarchy.hh"
-#include "phoenix/model_script.hh"
-#include "phoenix/texture.hh"
-#include "phoenix/vdfs.hh"
+#include <phoenix/Archive.hh>
+#include <phoenix/Vfs.hh>
 
 #include <CLI/App.hpp>
 #include <fmt/format.h>
@@ -18,8 +12,6 @@
 
 #include "config.hh"
 #include "dump.hh"
-
-namespace px = phoenix;
 
 enum class file_format {
 	mdh,
@@ -33,25 +25,25 @@ enum class file_format {
 	unknown,
 };
 
-int dump(file_format fmt, px::buffer& in, bool bson) {
+int dump(file_format fmt, phoenix::Buffer& in, bool bson) {
 	nlohmann::json output {};
 
 	if (fmt == file_format::mdh) {
-		output = phoenix::model_hierarchy::parse(in);
+		output = phoenix::ModelHierarchy::parse(in);
 	} else if (fmt == file_format::man) {
-		output = phoenix::animation::parse(in);
+		output = phoenix::Animation::parse(in);
 	} else if (fmt == file_format::csl) {
-		output = phoenix::messages::parse(in);
+		output = phoenix::CutsceneLibrary::parse(in);
 	} else if (fmt == file_format::fnt) {
-		output = phoenix::font::parse(in);
+		output = phoenix::Font::parse(in);
 	} else if (fmt == file_format::msh) {
-		output = phoenix::mesh::parse(in, {});
+		output = phoenix::Mesh::parse(in, {});
 	} else if (fmt == file_format::tex) {
-		output = phoenix::texture::parse(in);
+		output = phoenix::Texture::parse(in);
 	} else if (fmt == file_format::mds) {
-		output = phoenix::model_script::parse(in);
+		output = phoenix::ModelScript::parse(in);
 	} else if (fmt == file_format::msb) {
-		output = phoenix::model_script::parse(in);
+		output = phoenix::ModelScript::parse(in);
 	} else {
 		fmt::print(stderr, "format not supported");
 		return EXIT_FAILURE;
@@ -67,7 +59,7 @@ int dump(file_format fmt, px::buffer& in, bool bson) {
 	return EXIT_SUCCESS;
 }
 
-file_format detect_file_format(px::buffer&& buf) {
+file_format detect_file_format(phoenix::Buffer&& buf) {
 	buf.mark();
 	if (buf.get_string(4) == "ZTEX")
 		return file_format::tex;
@@ -103,9 +95,9 @@ file_format detect_file_format(px::buffer&& buf) {
 	if (buf.get_line() == "ZenGin Archive") {
 		buf.reset();
 		auto copy = buf.duplicate();
-		auto reader = phoenix::archive_reader::open(copy);
+		auto reader = phoenix::ArchiveReader::open(copy);
 
-		px::archive_object obj {};
+		phoenix::ArchiveObject obj {};
 		if (!reader->read_object_begin(obj))
 			return file_format::unknown;
 
@@ -122,7 +114,7 @@ file_format detect_file_format(px::buffer&& buf) {
 }
 
 int main(int argc, char** argv) {
-	px::logging::use_default_logger();
+	phoenix::Logging::use_default_logger();
 
 	CLI::App app {"Dump ZenGin files to JSON."};
 
@@ -151,25 +143,25 @@ int main(int argc, char** argv) {
 	}
 
 	try {
-		auto in = px::buffer::empty();
+		auto in = phoenix::Buffer::empty();
 
 		if (vdf) {
-			const auto container = px::vdf_file::open(*vdf);
-			if (const auto* entry = container.find_entry(*file); entry != nullptr) {
+			auto container = phoenix::Vfs {};
+			container.mount_disk(*vdf);
+
+			if (const auto* entry = container.find(*file); entry != nullptr) {
 				in = entry->open();
 			} else {
 				fmt::print(stderr, "the file named {} was not found in the VDF {}", *file, *vdf);
 				return EXIT_FAILURE;
 			}
 		} else {
-			in = phoenix::buffer::mmap(*file);
+			in = phoenix::Buffer::mmap(*file);
 		}
 
 		return dump(detect_file_format(in.duplicate()), in, bson);
-	} catch (const px::parser_error& e) {
+	} catch (const phoenix::ParserError& e) {
 		fmt::print(stderr, "failed to parse file: {}", e.what());
 		return EXIT_FAILURE;
 	}
-
-	return EXIT_SUCCESS;
 }

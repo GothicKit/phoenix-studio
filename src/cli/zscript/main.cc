@@ -1,6 +1,6 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
-#include <phoenix/script.hh>
+#include <phoenix/DaedalusScript.hh>
 
 #include <CLI/App.hpp>
 #include <fmt/format.h>
@@ -8,6 +8,7 @@
 #include <fstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 #include "config.hh"
 #include "decompiler.hh"
@@ -15,28 +16,33 @@
 using namespace phoenix;
 
 #define PRINT_FLAG(cond, flag)                                                                                         \
-	if (cond) {                                                                                                        \
-		fmt::print("{}", flag);                                                                                        \
-	} else {                                                                                                           \
-		fmt::print(" ");                                                                                               \
-	}
+	do {                                                                                                               \
+		if (cond) {                                                                                                    \
+			fmt::print("{}", flag);                                                                                    \
+		} else {                                                                                                       \
+			fmt::print(" ");                                                                                           \
+		}                                                                                                              \
+	} while (false)
 
 #define SV_CONTAINS(sv, chr) ((sv).find(chr) != std::string_view::npos)
 
-void print_assembly_of_symbol(const script& scr, const symbol& sym);
-void print_assembly(const script& scr);
+void print_assembly_of_symbol(const DaedalusScript& scr, const DaedalusSymbol& sym);
+void print_assembly(const DaedalusScript& scr);
 
-void print_symbol_detailed(const script& scr, const symbol& sym);
-void print_symbol_list(const script& scr,
+void print_symbol_detailed(const DaedalusScript& scr, const DaedalusSymbol& sym);
+void print_symbol_list(const DaedalusScript& scr,
                        std::string_view include_filter,
                        std::string_view exclude_filter,
                        std::string_view search);
 
-std::string print_definition(const script& scr, const symbol& sym, const symbol* parent, std::string_view indent = "");
-void find_usages(const script& scr, const symbol& sym);
+std::string print_definition(const DaedalusScript& scr,
+                             const DaedalusSymbol& sym,
+                             const DaedalusSymbol* parent,
+                             std::string_view indent = "");
+void find_usages(const DaedalusScript& scr, const DaedalusSymbol& sym);
 
 int main(int argc, char** argv) {
-	phoenix::logging::use_default_logger();
+	phoenix::Logging::use_default_logger();
 
 	CLI::App app {"Inspect ZenGin script files."};
 
@@ -87,8 +93,8 @@ int main(int argc, char** argv) {
 			return EXIT_FAILURE;
 		}
 
-		auto scr = script::parse(*file);
-		const symbol* sym = nullptr;
+		auto scr = DaedalusScript::parse(*file);
+		const DaedalusSymbol* sym = nullptr;
 
 		if (symbol_name) {
 			sym = scr.find_symbol_by_name(*symbol_name);
@@ -125,7 +131,6 @@ int main(int argc, char** argv) {
 			} else {
 				std::unordered_map<uint32_t, std::string> files;
 				std::unordered_map<uint32_t, std::string> file_names;
-				uint32_t skip = 0;
 
 				for (auto& s : scr.symbols()) {
 					if (s.name() == "$INSTANCE_HELP" || s.is_generated() || s.name().find('.') != -1)
@@ -138,8 +143,9 @@ int main(int argc, char** argv) {
 					std::string def = print_definition(scr, s, scr.find_symbol_by_index(s.parent()));
 
 					if (!s.is_member() && !s.is_external() &&
-					    (s.type() == datatype::prototype || (s.type() == datatype::function && s.is_const()) ||
-					     (s.type() == datatype::instance && s.is_const()))) {
+					    (s.type() == DaedalusDataType::PROTOTYPE ||
+					     (s.type() == DaedalusDataType::FUNCTION && s.is_const()) ||
+					     (s.type() == DaedalusDataType::INSTANCE && s.is_const()))) {
 						def += fmt::format(" {{\n{}}}\n", decompile(scr, s, 4));
 					}
 
@@ -173,24 +179,24 @@ int main(int argc, char** argv) {
 /// \brief Tests whether the symbol has a value related to it
 /// \param symbol The symbol to test on
 /// \return `true` if the symbol has a value `false` otherwise.
-bool has_constant_value(const symbol& symbol) {
-	return symbol.is_const() && symbol.type() != datatype::prototype && symbol.type() != datatype::instance &&
-	    symbol.type() != datatype::function;
+bool has_constant_value(const DaedalusSymbol& symbol) {
+	return symbol.is_const() && symbol.type() != DaedalusDataType::PROTOTYPE &&
+	    symbol.type() != DaedalusDataType::INSTANCE && symbol.type() != DaedalusDataType::FUNCTION;
 }
 
 /// \brief Prints the value of a symbol
 /// \param symbol The symbol to print the value of
-std::string print_symbol_value(const symbol& symbol, int index = -1) {
+std::string print_symbol_value(const DaedalusSymbol& symbol, int index = -1) {
 	std::string val {};
 	auto print_value = [&](uint8_t index) {
 		switch (symbol.type()) {
-		case datatype::float_:
+		case DaedalusDataType::FLOAT:
 			val += fmt::format("{}", symbol.get_float(index));
 			break;
-		case datatype::integer:
+		case DaedalusDataType::INT:
 			val += fmt::format("{}", symbol.get_int(index));
 			break;
-		case datatype::string:
+		case DaedalusDataType::STRING:
 			val += fmt::format("\"{}\"", symbol.get_string(index));
 			break;
 		default:
@@ -223,7 +229,10 @@ std::string print_symbol_value(const symbol& symbol, int index = -1) {
 /// \param sym The symbol to generate a definition of
 /// \param parent The parent of the symbol
 /// \param indent A custom indentation to prepend
-std::string print_definition(const script& scr, const symbol& sym, const symbol* parent, std::string_view indent) {
+std::string print_definition(const DaedalusScript& scr,
+                             const DaedalusSymbol& sym,
+                             const DaedalusSymbol* parent,
+                             std::string_view indent) {
 	std::string def {};
 	if (sym.is_member())
 		return def;
@@ -231,15 +240,15 @@ std::string print_definition(const script& scr, const symbol& sym, const symbol*
 	if (sym.is_external())
 		def += "extern ";
 
-	if (sym.type() == datatype::instance) {
+	if (sym.type() == DaedalusDataType::INSTANCE) {
 		def += fmt::format("instance {}({})", sym.name(), (parent == nullptr ? "*ERR*" : parent->name()));
 
 		if (!sym.is_const()) {
 			def += ";";
 		}
-	} else if (sym.type() == datatype::prototype) {
+	} else if (sym.type() == DaedalusDataType::PROTOTYPE) {
 		def += fmt::format("prototype {}({})", sym.name(), (parent == nullptr ? "*ERR*" : parent->name()));
-	} else if (sym.type() == datatype::class_) {
+	} else if (sym.type() == DaedalusDataType::CLASS) {
 		def += fmt::format("class {} {{\n", sym.name());
 
 		for (const auto& member : scr.symbols()) {
@@ -253,7 +262,7 @@ std::string print_definition(const script& scr, const symbol& sym, const symbol*
 		}
 
 		def += fmt::format("{}}};", indent);
-	} else if (sym.type() == datatype::function) {
+	} else if (sym.type() == DaedalusDataType::FUNCTION) {
 		def += fmt::format("func {} {}(", get_type_name(sym.rtype()), sym.name());
 
 		auto params = scr.find_parameters_for_function(&sym);
@@ -262,7 +271,7 @@ std::string print_definition(const script& scr, const symbol& sym, const symbol*
 			if (count > 0)
 				def += ", ";
 
-			if (param->type() == datatype::instance) {
+			if (param->type() == DaedalusDataType::INSTANCE) {
 				const auto* dt = scr.find_symbol_by_index(param->parent());
 
 				if (dt == nullptr) {
@@ -302,7 +311,7 @@ std::string print_definition(const script& scr, const symbol& sym, const symbol*
 /// \brief Print detailed information about a symbol
 /// \param scr The script to reference
 /// \param sym The symbol to print details of
-void print_symbol_detailed(const script& scr, const symbol& sym) {
+void print_symbol_detailed(const DaedalusScript& scr, const DaedalusSymbol& sym) {
 	const auto* parent = scr.find_symbol_by_index(sym.parent());
 
 	fmt::print("{:0>8x} <{}>\n", sym.index(), sym.name());
@@ -331,11 +340,11 @@ void print_symbol_detailed(const script& scr, const symbol& sym) {
 		fmt::print("\tVariable Offset: {}\n", sym.offset_as_member());
 	}
 
-	if (sym.type() == datatype::class_) {
+	if (sym.type() == DaedalusDataType::CLASS) {
 		fmt::print("\tClass Size: {}\n", sym.class_size());
 	}
 
-	if (sym.is_const() && sym.type() == datatype::function) {
+	if (sym.is_const() && sym.type() == DaedalusDataType::FUNCTION) {
 		fmt::print("\tReturn Type: {}\n", get_type_name(sym.rtype()));
 	}
 
@@ -344,26 +353,26 @@ void print_symbol_detailed(const script& scr, const symbol& sym) {
 	}
 }
 
-/// \brief Gets the one-char abbreviation of a datatype
+/// \brief Gets the one-char abbreviation of a DaedalusDataType
 /// \param type The type to get the abbreviation of
 /// \return The abbreviation
-constexpr char get_type_abbrev(datatype tp) {
+constexpr char get_type_abbrev(DaedalusDataType tp) {
 	switch (tp) {
-	case datatype::void_:
+	case DaedalusDataType::VOID:
 		return 'v';
-	case datatype::float_:
+	case DaedalusDataType::FLOAT:
 		return 'f';
-	case datatype::integer:
+	case DaedalusDataType::INT:
 		return 'i';
-	case datatype::string:
+	case DaedalusDataType::STRING:
 		return 's';
-	case datatype::class_:
+	case DaedalusDataType::CLASS:
 		return 'C';
-	case datatype::function:
+	case DaedalusDataType::FUNCTION:
 		return 'F';
-	case datatype::prototype:
+	case DaedalusDataType::PROTOTYPE:
 		return 'P';
-	case datatype::instance:
+	case DaedalusDataType::INSTANCE:
 		return 'I';
 	}
 
@@ -372,7 +381,7 @@ constexpr char get_type_abbrev(datatype tp) {
 
 /// \brief Print a string containing all the given symbols flags
 /// \param sym The symbol to print the flags of
-void print_symbol_flags(const symbol& sym) {
+void print_symbol_flags(const DaedalusSymbol& sym) {
 	fmt::print("{}", get_type_abbrev(sym.type()));
 
 	PRINT_FLAG(sym.is_const(), 'c');
@@ -386,7 +395,7 @@ void print_symbol_flags(const symbol& sym) {
 /// \brief Prints the name of the symbol's parent symbol if it exists
 /// \param sym The symbol to print the parent of
 /// \param scr The script to look up the parent in.
-void print_symbol_parent(const symbol& sym, const script& scr) {
+void print_symbol_parent(const DaedalusSymbol& sym, const DaedalusScript& scr) {
 	if (sym.parent() != unset) {
 		const auto* parent = scr.find_symbol_by_index(sym.parent());
 
@@ -405,7 +414,9 @@ void print_symbol_parent(const symbol& sym, const script& scr) {
 /// \param include_filter Filter of flags to include
 /// \param exclude_filter Filter of flags to exclude
 /// \return `true` if the filters match, `false` otherwise.
-bool symbol_matches_filter(const symbol& sym, std::string_view include_filter, std::string_view exclude_filter) {
+bool symbol_matches_filter(const DaedalusSymbol& sym,
+                           std::string_view include_filter,
+                           std::string_view exclude_filter) {
 	bool matches_include = true;
 	bool matches_exclude = false;
 
@@ -416,14 +427,14 @@ bool symbol_matches_filter(const symbol& sym, std::string_view include_filter, s
 			return true;
 		}
 
-		if ((sym.type() == datatype::void_ && SV_CONTAINS(filter, 'v')) ||
-		    (sym.type() == datatype::float_ && SV_CONTAINS(filter, 'f')) ||
-		    (sym.type() == datatype::integer && SV_CONTAINS(filter, 'i')) ||
-		    (sym.type() == datatype::string && SV_CONTAINS(filter, 's')) ||
-		    (sym.type() == datatype::class_ && SV_CONTAINS(filter, 'C')) ||
-		    (sym.type() == datatype::function && SV_CONTAINS(filter, 'F')) ||
-		    (sym.type() == datatype::prototype && SV_CONTAINS(filter, 'P')) ||
-		    (sym.type() == datatype::instance && SV_CONTAINS(filter, 'I'))) {
+		if ((sym.type() == DaedalusDataType::VOID && SV_CONTAINS(filter, 'v')) ||
+		    (sym.type() == DaedalusDataType::FLOAT && SV_CONTAINS(filter, 'f')) ||
+		    (sym.type() == DaedalusDataType::INT && SV_CONTAINS(filter, 'i')) ||
+		    (sym.type() == DaedalusDataType::STRING && SV_CONTAINS(filter, 's')) ||
+		    (sym.type() == DaedalusDataType::CLASS && SV_CONTAINS(filter, 'C')) ||
+		    (sym.type() == DaedalusDataType::FUNCTION && SV_CONTAINS(filter, 'F')) ||
+		    (sym.type() == DaedalusDataType::PROTOTYPE && SV_CONTAINS(filter, 'P')) ||
+		    (sym.type() == DaedalusDataType::INSTANCE && SV_CONTAINS(filter, 'I'))) {
 			return true;
 		}
 		return false;
@@ -444,7 +455,7 @@ bool symbol_matches_filter(const symbol& sym, std::string_view include_filter, s
 /// \param scr The script to print the symbols of
 /// \param include_filter Filter for symbols to include
 /// \param exclude_filter Filter for symbols to exclude
-void print_symbol_list(const script& scr,
+void print_symbol_list(const DaedalusScript& scr,
                        std::string_view include_filter,
                        std::string_view exclude_filter,
                        std::string_view search) {
@@ -471,7 +482,7 @@ void print_symbol_list(const script& scr,
 		fmt::print("{:0>8x} ", sym.address());
 
 		// Return type
-		if (sym.is_const() && sym.type() == datatype::function) {
+		if (sym.is_const() && sym.type() == DaedalusDataType::FUNCTION) {
 			if (sym.has_return()) {
 				fmt::print("{} ", get_type_abbrev(sym.rtype()));
 			} else {
@@ -486,130 +497,90 @@ void print_symbol_list(const script& scr,
 	}
 }
 
-constexpr std::string_view get_opcode_name(opcode code) {
-	switch (code) {
-	case opcode::nop:
-		return "nop";
-	case opcode::add:
-		return "add";
-	case opcode::sub:
-		return "sub";
-	case opcode::mul:
-		return "mul";
-	case opcode::div:
-		return "div";
-	case opcode::mod:
-		return "mod";
-	case opcode::or_:
-		return "or";
-	case opcode::andb:
-		return "andb";
-	case opcode::lsl:
-		return "lsl";
-	case opcode::lsr:
-		return "lsr";
-	case opcode::plus:
-		return "plus";
-	case opcode::negate:
-		return "negate";
-	case opcode::lt:
-		return "lt";
-	case opcode::gt:
-		return "gt";
-	case opcode::orr:
-		return "orr";
-	case opcode::and_:
-		return "and";
-	case opcode::lte:
-		return "lte";
-	case opcode::eq:
-		return "eq";
-	case opcode::neq:
-		return "neq";
-	case opcode::gte:
-		return "gte";
-	case opcode::not_:
-		return "not";
-	case opcode::cmpl:
-		return "cmpl";
-	case opcode::rsr:
-		return "rsr";
-	case opcode::bl:
-		return "bl";
-	case opcode::be:
-		return "be";
-	case opcode::b:
-		return "b";
-	case opcode::bz:
-		return "bz";
-	case opcode::addmovi:
-		return "addmovi";
-	case opcode::submovi:
-		return "submovi";
-	case opcode::mulmovi:
-		return "mulmovi";
-	case opcode::divmovi:
-		return "divmovi";
-	case opcode::movs:
-		return "movs";
-	case opcode::movss:
-		return "movss";
-	case opcode::movvf:
-		return "movvf";
-	case opcode::movf:
-		return "movf";
-	case opcode::movvi:
-		return "movvi";
-	case opcode::movi:
-		return "movi";
-	case opcode::pushi:
-		return "pushi";
-	case opcode::pushv:
-		return "pushv";
-	case opcode::pushvi:
-		return "pushvi";
-	case opcode::pushvv:
-		return "pushvv";
-	case opcode::gmovi:
-		return "gmovi";
-	}
+std::unordered_map<DaedalusOpcode, std::string_view> DAEDALUS_OPCODES {
+    {DaedalusOpcode::ADD, "ADD"},
+    {DaedalusOpcode::SUB, "SUB"},
+    {DaedalusOpcode::MUL, "MUL"},
+    {DaedalusOpcode::DIV, "DIV"},
+    {DaedalusOpcode::MOD, "MOD"},
+    {DaedalusOpcode::OR, "OR"},
+    {DaedalusOpcode::ANDB, "ANDB"},
+    {DaedalusOpcode::LT, "LT"},
+    {DaedalusOpcode::GT, "GT"},
+    {DaedalusOpcode::MOVI, "MOVI"},
+    {DaedalusOpcode::ORR, "ORR"},
+    {DaedalusOpcode::AND, "AND"},
+    {DaedalusOpcode::LSL, "LSL"},
+    {DaedalusOpcode::LSR, "LSR"},
+    {DaedalusOpcode::LTE, "LTE"},
+    {DaedalusOpcode::EQ, "EQ"},
+    {DaedalusOpcode::NEQ, "NEQ"},
+    {DaedalusOpcode::GTE, "GTE"},
+    {DaedalusOpcode::ADDMOVI, "ADDMOVI"},
+    {DaedalusOpcode::SUBMOVI, "SUBMOVI"},
+    {DaedalusOpcode::MULMOVI, "MULMOVI"},
+    {DaedalusOpcode::DIVMOVI, "DIVMOVI"},
+    {DaedalusOpcode::PLUS, "PLUS"},
+    {DaedalusOpcode::NEGATE, "NEGATE"},
+    {DaedalusOpcode::NOT, "NOT"},
+    {DaedalusOpcode::CMPL, "CMPL"},
+    {DaedalusOpcode::NOP, "NOP"},
+    {DaedalusOpcode::RSR, "RSR"},
+    {DaedalusOpcode::BL, "BL"},
+    {DaedalusOpcode::BE, "BE"},
+    {DaedalusOpcode::PUSHI, "PUSHI"},
+    {DaedalusOpcode::PUSHV, "PUSHV"},
+    {DaedalusOpcode::PUSHVI, "PUSHVI"},
+    {DaedalusOpcode::MOVS, "MOVS"},
+    {DaedalusOpcode::MOVSS, "MOVSS"},
+    {DaedalusOpcode::MOVVF, "MOVVF"},
+    {DaedalusOpcode::MOVF, "MOVF"},
+    {DaedalusOpcode::MOVVI, "MOVVI"},
+    {DaedalusOpcode::B, "B"},
+    {DaedalusOpcode::BZ, "BZ"},
+    {DaedalusOpcode::GMOVI, "GMOVI"},
+    {DaedalusOpcode::PUSHVV, "PUSHVV"},
+};
 
+std::string_view get_opcode_name(DaedalusOpcode code) {
+	auto it = DAEDALUS_OPCODES.find(code);
+	if (it != DAEDALUS_OPCODES.end()) return it->second;
 	return "???";
 }
 
 /// \brief Prints the given instruction as raw bytes
 /// \param i The instruction to print
-void print_instruction_bytes(const instruction& i) {
+void print_instruction_bytes(const DaedalusInstruction& i) {
 	fmt::print("{:0>2x} ", (uint32_t) i.op);
 
 	switch (i.op) {
-	case opcode::bl:
-	case opcode::bz:
-	case opcode::b:
+	case DaedalusOpcode::BL:
+	case DaedalusOpcode::BZ:
+	case DaedalusOpcode::B:
 		fmt::print("{:0>2x} {:0>2x} {:0>2x} {:0>2x}    ",
 		           i.address & 0xFFU,
 		           (i.address >> 8U) & 0xFFU,
 		           (i.address >> 16U) & 0xFFU,
 		           (i.address >> 24U) & 0xFFU);
 		break;
-	case opcode::pushi:
+	case DaedalusOpcode::PUSHI:
 		fmt::print("{:0>2x} {:0>2x} {:0>2x} {:0>2x}    ",
 		           i.immediate & 0xFFU,
 		           (i.immediate >> 8U) & 0xFFU,
 		           (i.immediate >> 16U) & 0xFFU,
 		           (i.immediate >> 24U) & 0xFFU);
 		break;
-	case opcode::be:
-	case opcode::pushv:
-	case opcode::pushvi:
-	case opcode::gmovi:
+	case DaedalusOpcode::BE:
+	case DaedalusOpcode::PUSHV:
+	case DaedalusOpcode::PUSHVI:
+	case DaedalusOpcode::GMOVI:
 		fmt::print("{:0>2x} {:0>2x} {:0>2x} {:0>2x}    ",
 		           i.symbol & 0xFFU,
 		           (i.symbol >> 8U) & 0xFFU,
 		           (i.symbol >> 16U) & 0xFFU,
 		           (i.symbol >> 24U) & 0xFFU);
 		break;
-	case opcode::pushvv:
+	case DaedalusOpcode::PUSHVV:
 		fmt::print("{:0>2x} {:0>2x} {:0>2x} {:0>2x} {:0>2x} ",
 		           i.symbol & 0xFFU,
 		           (i.symbol >> 8U) & 0xFFU,
@@ -626,7 +597,7 @@ void print_instruction_bytes(const instruction& i) {
 /// \brief Prints the given instruction
 /// \param scr The script to reference
 /// \param i The instruction to print
-void print_instruction(const script& scr, const instruction& i, bool instruction_only = false) {
+void print_instruction(const DaedalusScript& scr, const DaedalusInstruction& i, bool instruction_only = false) {
 	if (!instruction_only) {
 		print_instruction_bytes(i);
 		fmt::print(" ");
@@ -635,20 +606,20 @@ void print_instruction(const script& scr, const instruction& i, bool instruction
 	fmt::print("{}", get_opcode_name(i.op));
 
 	switch (i.op) {
-	case opcode::bl:
+	case DaedalusOpcode::BL:
 		fmt::print(" {:0>8x}", i.address);
 		if (const auto* s = scr.find_symbol_by_address(i.address); s != nullptr && !instruction_only) {
 			fmt::print(" ; <{}>", s->name());
 		}
 		break;
-	case opcode::b:
-	case opcode::bz:
+	case DaedalusOpcode::B:
+	case DaedalusOpcode::BZ:
 		fmt::print(" {:0>8x}", i.address);
 		break;
-	case opcode::pushv:
-	case opcode::pushvi:
-	case opcode::be:
-	case opcode::gmovi:
+	case DaedalusOpcode::PUSHV:
+	case DaedalusOpcode::PUSHVI:
+	case DaedalusOpcode::BE:
+	case DaedalusOpcode::GMOVI:
 		fmt::print(" {:0>8x}", i.symbol);
 
 		if (const auto* s = scr.find_symbol_by_index(i.symbol); s != nullptr && !instruction_only) {
@@ -659,10 +630,10 @@ void print_instruction(const script& scr, const instruction& i, bool instruction
 			}
 		}
 		break;
-	case opcode::pushi:
+	case DaedalusOpcode::PUSHI:
 		fmt::print(" {}", i.immediate);
 		break;
-	case opcode::pushvv:
+	case DaedalusOpcode::PUSHVV:
 		fmt::print(" {:0>8x} + {}", i.address, i.index);
 
 		if (const auto* s = scr.find_symbol_by_index(i.symbol); s != nullptr && !instruction_only) {
@@ -681,12 +652,12 @@ void print_instruction(const script& scr, const instruction& i, bool instruction
 /// \brief Prints the disassembly of one symbol
 /// \param scr The script to reference
 /// \param sym The symbol to print the disassembly of
-void print_assembly_of_symbol(const script& scr, const symbol& sym) {
+void print_assembly_of_symbol(const DaedalusScript& scr, const DaedalusSymbol& sym) {
 	fmt::print("{:0>8x} <{}>:\n", sym.address(), sym.name());
 
 	uint32_t pc = sym.address();
 	uint32_t return_after = pc;
-	instruction i {};
+	DaedalusInstruction i;
 
 	do {
 		i = scr.instruction_at(pc);
@@ -695,28 +666,28 @@ void print_assembly_of_symbol(const script& scr, const symbol& sym) {
 		print_instruction(scr, i);
 		fmt::print("\n");
 
-		if (i.op == opcode::bz || i.op == opcode::b) {
+		if (i.op == DaedalusOpcode::BZ || i.op == DaedalusOpcode::B) {
 			return_after = return_after > i.address ? return_after : i.address;
 		}
 
 		pc += i.size;
-	} while (i.op != opcode::rsr || pc <= return_after);
+	} while (i.op != DaedalusOpcode::RSR || pc <= return_after);
 }
 
 /// \brief Prints the disassembly of every symbol found in the script
 /// \param scr The script to disassemble
-void print_assembly(const script& scr) {
+void print_assembly(const DaedalusScript& scr) {
 	for (const auto& sym : scr.symbols()) {
-		if (sym.type() == datatype::prototype || sym.type() == datatype::instance ||
-		    (sym.type() == datatype::function && !sym.is_external() && sym.is_const())) {
+		if (sym.type() == DaedalusDataType::PROTOTYPE || sym.type() == DaedalusDataType::INSTANCE ||
+		    (sym.type() == DaedalusDataType::FUNCTION && !sym.is_external() && sym.is_const())) {
 			print_assembly_of_symbol(scr, sym);
 		}
 	}
 }
 
-void find_usages(const script& scr, const symbol& sym) {
+void find_usages(const DaedalusScript& scr, const DaedalusSymbol& sym) {
 	uint32_t pc = 0;
-	const symbol* current_function;
+	const DaedalusSymbol* current_function;
 
 	while (pc < scr.size()) {
 		auto inst = scr.instruction_at(pc);
@@ -728,21 +699,21 @@ void find_usages(const script& scr, const symbol& sym) {
 		}
 
 		switch (inst.op) {
-		case opcode::addmovi:
-		case opcode::submovi:
-		case opcode::mulmovi:
-		case opcode::divmovi:
-		case opcode::bl:
-		case opcode::be:
-		case opcode::pushv:
-		case opcode::pushvi:
-		case opcode::movi:
-		case opcode::movs:
-		case opcode::movvf:
-		case opcode::movf:
-		case opcode::movvi:
-		case opcode::pushvv:
-			if (inst.symbol == sym.index() || (inst.op == opcode::bl && sym.address() == inst.address)) {
+		case DaedalusOpcode::ADDMOVI:
+		case DaedalusOpcode::SUBMOVI:
+		case DaedalusOpcode::MULMOVI:
+		case DaedalusOpcode::DIVMOVI:
+		case DaedalusOpcode::BL:
+		case DaedalusOpcode::BE:
+		case DaedalusOpcode::PUSHV:
+		case DaedalusOpcode::PUSHVI:
+		case DaedalusOpcode::MOVI:
+		case DaedalusOpcode::MOVS:
+		case DaedalusOpcode::MOVVF:
+		case DaedalusOpcode::MOVF:
+		case DaedalusOpcode::MOVVI:
+		case DaedalusOpcode::PUSHVV:
+			if (inst.symbol == sym.index() || (inst.op == DaedalusOpcode::BL && sym.address() == inst.address)) {
 				fmt::print("\r[");
 				print_instruction(scr, inst, true);
 				fmt::print("] at {:0>8x} in {}\n", pc, current_function->name());

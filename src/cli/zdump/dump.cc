@@ -1,55 +1,60 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
 #include "dump.hh"
+#include "phoenix/Mesh.hh"
+#include "phoenix/ModelScript.hh"
+#include "phoenix/vobs/VirtualObject.hh"
+#include "phoenix/world/BspTree.hh"
+#include "phoenix/world/WayNet.hh"
 
 #include <unordered_map>
 
-static const std::unordered_map<px::vob_type, std::string> vob_type_map = {
-    {px::vob_type::zCVob, "zCVob"},
-    {px::vob_type::zCVobLevelCompo, "zCVobLevelCompo:zCVob"},
-    {px::vob_type::oCItem, "oCItem:zCVob"},
-    {px::vob_type::oCNpc, "oCNpc:zCVob"},
-    {px::vob_type::oCMOB, "oCMOB:zCVob"},
-    {px::vob_type::oCMobInter, "oCMobInter:oCMOB:zCVob"},
-    {px::vob_type::oCMobBed, "oCMobBed:oCMobInter:oCMOB:zCVob"},
-    {px::vob_type::oCMobFire, "oCMobFire:oCMobInter:oCMOB:zCVob"},
-    {px::vob_type::oCMobLadder, "oCMobLadder:oCMobInter:oCMOB:zCVob"},
-    {px::vob_type::oCMobSwitch, "oCMobSwitch:oCMobInter:oCMOB:zCVob"},
-    {px::vob_type::oCMobWheel, "oCMobWheel:oCMobInter:oCMOB:zCVob"},
-    {px::vob_type::oCMobContainer, "oCMobContainer:oCMobInter:oCMOB:zCVob"},
-    {px::vob_type::oCMobDoor, "oCMobDoor:oCMobInter:oCMOB:zCVob"},
-    {px::vob_type::zCPFXController, "zCPFXControler:zCVob"},
-    {px::vob_type::zCVobAnimate, "zCVobAnimate:zCVob"},
-    {px::vob_type::zCVobLensFlare, "zCVobLensFlare:zCVob"},
-    {px::vob_type::zCVobLight, "zCVobLight:zCVob"},
-    {px::vob_type::zCVobSpot, "zCVobSpot:zCVob"},
-    {px::vob_type::zCVobStartpoint, "zCVobStartpoint:zCVob"},
-    {px::vob_type::zCVobSound, "zCVobSound:zCVob"},
-    {px::vob_type::zCVobSoundDaytime, "zCVobSoundDaytime:zCVobSound:zCVob"},
-    {px::vob_type::oCZoneMusic, "oCZoneMusic:zCVob"},
-    {px::vob_type::oCZoneMusicDefault, "oCZoneMusicDefault:oCZoneMusic:zCVob"},
-    {px::vob_type::zCZoneZFog, "zCZoneZFog:zCVob"},
-    {px::vob_type::zCZoneZFogDefault, "zCZoneZFogDefault:zCZoneZFog:zCVob"},
-    {px::vob_type::zCZoneVobFarPlane, "zCZoneVobFarPlane:zCVob"},
-    {px::vob_type::zCZoneVobFarPlaneDefault, "zCZoneVobFarPlaneDefault:zCZoneVobFarPlane:zCVob"},
-    {px::vob_type::zCMessageFilter, "zCMessageFilter:zCVob"},
-    {px::vob_type::zCCodeMaster, "zCCodeMaster:zCVob"},
-    {px::vob_type::zCTrigger, "zCTrigger:zCVob"},
-    {px::vob_type::zCTriggerList, "zCTriggerList:zCTrigger:zCVob"},
-    {px::vob_type::oCTriggerScript, "oCTriggerScript:zCTrigger:zCVob"},
-    {px::vob_type::zCMover, "zCMover:zCTrigger:zCVob"},
-    {px::vob_type::oCTriggerChangeLevel, "oCTriggerChangeLevel:zCTrigger:zCVob"},
-    {px::vob_type::zCTriggerWorldStart, "zCTriggerWorldStart:zCVob"},
-    {px::vob_type::zCTriggerUntouch, "zCTriggerUntouch:zCVob"},
-    {px::vob_type::zCCSCamera, "zCCSCamera:zCVob"},
-    {px::vob_type::zCCamTrj_KeyFrame, "zCCamTrj_KeyFrame:zCVob"},
-    {px::vob_type::oCTouchDamage, "oCTouchDamage:zCTouchDamage:zCVob"},
-    {px::vob_type::zCEarthquake, "zCEarthquake:zCVob"},
-    {px::vob_type::zCMoverController, "zCMoverControler:zCVob"},
-    {px::vob_type::zCVobScreenFX, "zCVobScreenFX:zCVob"},
-    {px::vob_type::zCVobStair, "zCVobStair:zCVob"},
-    {px::vob_type::oCCSTrigger, "oCCSTrigger:zCTrigger:zCVob"},
-    {px::vob_type::ignored, "\xA7"}, // some sort of padding object, probably. seems to be always empty
+static const std::unordered_map<phoenix::VobType, std::string> VobType_map = {
+    {phoenix::VobType::zCVob, "zCVob"},
+    {phoenix::VobType::zCVobLevelCompo, "zCVobLevelCompo:zCVob"},
+    {phoenix::VobType::oCItem, "oCItem:zCVob"},
+    {phoenix::VobType::oCNpc, "oCNpc:zCVob"},
+    {phoenix::VobType::oCMOB, "oCMOB:zCVob"},
+    {phoenix::VobType::oCMobInter, "oCMobInter:oCMOB:zCVob"},
+    {phoenix::VobType::oCMobBed, "oCMobBed:oCMobInter:oCMOB:zCVob"},
+    {phoenix::VobType::oCMobFire, "oCMobFire:oCMobInter:oCMOB:zCVob"},
+    {phoenix::VobType::oCMobLadder, "oCMobLadder:oCMobInter:oCMOB:zCVob"},
+    {phoenix::VobType::oCMobSwitch, "oCMobSwitch:oCMobInter:oCMOB:zCVob"},
+    {phoenix::VobType::oCMobWheel, "oCMobWheel:oCMobInter:oCMOB:zCVob"},
+    {phoenix::VobType::oCMobContainer, "oCMobContainer:oCMobInter:oCMOB:zCVob"},
+    {phoenix::VobType::oCMobDoor, "oCMobDoor:oCMobInter:oCMOB:zCVob"},
+    {phoenix::VobType::zCPFXController, "zCPFXControler:zCVob"},
+    {phoenix::VobType::zCVobAnimate, "zCVobAnimate:zCVob"},
+    {phoenix::VobType::zCVobLensFlare, "zCVobLensFlare:zCVob"},
+    {phoenix::VobType::zCVobLight, "zCVobLight:zCVob"},
+    {phoenix::VobType::zCVobSpot, "zCVobSpot:zCVob"},
+    {phoenix::VobType::zCVobStartpoint, "zCVobStartpoint:zCVob"},
+    {phoenix::VobType::zCVobSound, "zCVobSound:zCVob"},
+    {phoenix::VobType::zCVobSoundDaytime, "zCVobSoundDaytime:zCVobSound:zCVob"},
+    {phoenix::VobType::oCZoneMusic, "oCZoneMusic:zCVob"},
+    {phoenix::VobType::oCZoneMusicDefault, "oCZoneMusicDefault:oCZoneMusic:zCVob"},
+    {phoenix::VobType::zCZoneZFog, "zCZoneZFog:zCVob"},
+    {phoenix::VobType::zCZoneZFogDefault, "zCZoneZFogDefault:zCZoneZFog:zCVob"},
+    {phoenix::VobType::zCZoneVobFarPlane, "zCZoneVobFarPlane:zCVob"},
+    {phoenix::VobType::zCZoneVobFarPlaneDefault, "zCZoneVobFarPlaneDefault:zCZoneVobFarPlane:zCVob"},
+    {phoenix::VobType::zCMessageFilter, "zCMessageFilter:zCVob"},
+    {phoenix::VobType::zCCodeMaster, "zCCodeMaster:zCVob"},
+    {phoenix::VobType::zCTrigger, "zCTrigger:zCVob"},
+    {phoenix::VobType::zCTriggerList, "zCTriggerList:zCTrigger:zCVob"},
+    {phoenix::VobType::oCTriggerScript, "oCTriggerScript:zCTrigger:zCVob"},
+    {phoenix::VobType::zCMover, "zCMover:zCTrigger:zCVob"},
+    {phoenix::VobType::oCTriggerChangeLevel, "oCTriggerChangeLevel:zCTrigger:zCVob"},
+    {phoenix::VobType::zCTriggerWorldStart, "zCTriggerWorldStart:zCVob"},
+    {phoenix::VobType::zCTriggerUntouch, "zCTriggerUntouch:zCVob"},
+    {phoenix::VobType::zCCSCamera, "zCCSCamera:zCVob"},
+    {phoenix::VobType::zCCamTrj_KeyFrame, "zCCamTrj_KeyFrame:zCVob"},
+    {phoenix::VobType::oCTouchDamage, "oCTouchDamage:zCTouchDamage:zCVob"},
+    {phoenix::VobType::zCEarthquake, "zCEarthquake:zCVob"},
+    {phoenix::VobType::zCMoverController, "zCMoverControler:zCVob"},
+    {phoenix::VobType::zCVobScreenFX, "zCVobScreenFX:zCVob"},
+    {phoenix::VobType::zCVobStair, "zCVobStair:zCVob"},
+    {phoenix::VobType::oCCSTrigger, "oCCSTrigger:zCTrigger:zCVob"},
+    {phoenix::VobType::ignored, "\xA7"}, // some sort of padding object, probably. seems to be always empty
 };
 
 namespace glm {
@@ -91,16 +96,16 @@ namespace glm {
 } // namespace glm
 
 namespace phoenix {
-	void to_json(nlohmann::json& j, const px::glyph& obj) {
+	void to_json(nlohmann::json& j, const phoenix::FontGlyph& obj) {
 		j["width"] = obj.width;
 		j["uv"] = {obj.uv[0], obj.uv[1]};
 	}
 
-	void to_json(nlohmann::json& j, const px::font& obj) {
+	void to_json(nlohmann::json& j, const phoenix::Font& obj) {
 		j = nlohmann::json {{"type", "font"}, {"name", obj.name}, {"height", obj.height}, {"glyphs", obj.glyphs}};
 	}
 
-	void to_json(nlohmann::json& j, const px::message_block& obj) {
+	void to_json(nlohmann::json& j, const phoenix::CutsceneBlock& obj) {
 		j["name"] = obj.name;
 		j["message"] = {
 		    {"type", obj.message.type},
@@ -109,17 +114,17 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::messages& obj) {
+	void to_json(nlohmann::json& j, const phoenix::CutsceneLibrary& obj) {
 		j["type"] = "messages";
 		j["blocks"] = obj.blocks;
 	}
 
-	void to_json(nlohmann::json& j, const px::bounding_box& obj) {
+	void to_json(nlohmann::json& j, const phoenix::AxisAlignedBoundingBox& obj) {
 		j["min"] = obj.min;
 		j["max"] = obj.max;
 	}
 
-	void to_json(nlohmann::json& j, const px::obb& obj) {
+	void to_json(nlohmann::json& j, const phoenix::OrientedBoundingBox& obj) {
 		j = {
 		    {"center", obj.center},
 		    {"axes", {obj.axes[0], obj.axes[1], obj.axes[2]}},
@@ -128,7 +133,7 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::date& obj) {
+	void to_json(nlohmann::json& j, const phoenix::Date& obj) {
 		j = {
 		    {"year", obj.year},
 		    {"month", obj.month},
@@ -139,21 +144,21 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::animation_sample& obj) {
+	void to_json(nlohmann::json& j, const phoenix::AnimationSample& obj) {
 		j["position"] = obj.position;
 		j["rotation"] = obj.rotation;
 	}
 
-	void to_json(nlohmann::json& j, const px::animation_event& obj) {
+	void to_json(nlohmann::json& j, const phoenix::AnimationEvent& obj) {
 		j["type"] = obj.type;
-		j["no"] = obj.no;
+		j["frame"] = obj.frame;
 		j["tag"] = obj.tag;
 		j["content"] = obj.content;
 		j["values"] = obj.values;
 		j["probability"] = obj.probability;
 	}
 
-	void to_json(nlohmann::json& j, const px::animation& obj) {
+	void to_json(nlohmann::json& j, const phoenix::Animation& obj) {
 		j = {
 		    {"type", "animation"},
 		    {"name", obj.name},
@@ -163,8 +168,6 @@ namespace phoenix {
 		    {"nodeCount", obj.node_count},
 		    {"fps", obj.fps},
 		    {"fpsSource", obj.fps_source},
-		    {"samplePositionRangeMin", obj.sample_position_range_min},
-		    {"samplePositionScalar", obj.sample_position_scalar},
 		    {"bbox", obj.bbox},
 		    {"checksum", obj.checksum},
 		    {"sourcePath", obj.source_path},
@@ -175,13 +178,13 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::model_hierarchy_node& obj) {
+	void to_json(nlohmann::json& j, const phoenix::ModelHierarchyNode& obj) {
 		j["parentIndex"] = obj.parent_index;
 		j["name"] = obj.name;
 		j["transform"] = obj.transform;
 	}
 
-	void to_json(nlohmann::json& j, const px::model_hierarchy& obj) {
+	void to_json(nlohmann::json& j, const phoenix::ModelHierarchy& obj) {
 		j = {
 		    {"type", "hierarchy"},
 		    {"nodes", obj.nodes},
@@ -191,7 +194,7 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::texture& obj) {
+	void to_json(nlohmann::json& j, const phoenix::Texture& obj) {
 		j = {
 		    {"format", obj.format()},
 		    {"width", obj.width()},
@@ -203,120 +206,120 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::material_group& obj) {
+	void to_json(nlohmann::json& j, const phoenix::MaterialGroup& obj) {
 		switch (obj) {
 
-		case material_group::undefined:
+		case MaterialGroup::UNDEFINED:
 			j = "undefined";
 			break;
-		case material_group::metal:
+		case MaterialGroup::METAL:
 			j = "metal";
 			break;
-		case material_group::stone:
+		case MaterialGroup::STONE:
 			j = "stone";
 			break;
-		case material_group::wood:
+		case MaterialGroup::WOOD:
 			j = "wood";
 			break;
-		case material_group::earth:
+		case MaterialGroup::EARTH:
 			j = "earth";
 			break;
-		case material_group::water:
+		case MaterialGroup::WATER:
 			j = "water";
 			break;
-		case material_group::snow:
+		case MaterialGroup::SNOW:
 			j = "snow";
 			break;
-		case material_group::none:
+		case MaterialGroup::NONE:
 			j = "none";
 			break;
 		}
 	}
 
-	void to_json(nlohmann::json& j, const px::animation_mapping_mode& obj) {
+	void to_json(nlohmann::json& j, const phoenix::AnimationMapping& obj) {
 		switch (obj) {
-		case animation_mapping_mode::none:
+		case AnimationMapping::NONE:
 			j = "none";
 			break;
-		case animation_mapping_mode::linear:
+		case AnimationMapping::LINEAR:
 			j = "linear";
 			break;
 		}
 	}
 
-	void to_json(nlohmann::json& j, const px::wave_mode_type& obj) {
+	void to_json(nlohmann::json& j, const WaveType& obj) {
 		switch (obj) {
-		case wave_mode_type::none:
+		case WaveType::NONE:
 			j = "none";
 			break;
-		case wave_mode_type::ambient_ground:
+		case WaveType::GROUND_AMBIENT:
 			j = "ambientGround";
 			break;
-		case wave_mode_type::ground:
+		case WaveType::GROUND:
 			j = "ground";
 			break;
-		case wave_mode_type::ambient_wall:
+		case WaveType::WALL_AMBIENT:
 			j = "ambientWall";
 			break;
-		case wave_mode_type::wall:
+		case WaveType::WALL:
 			j = "wall";
 			break;
-		case wave_mode_type::env:
+		case WaveType::ENVIRONMENT:
 			j = "env";
 			break;
-		case wave_mode_type::ambient_wind:
+		case WaveType::WIND_AMBIENT:
 			j = "ambientWind";
 			break;
-		case wave_mode_type::wind:
+		case WaveType::WIND:
 			j = "wind";
 			break;
 		}
 	}
 
-	void to_json(nlohmann::json& j, const px::wave_speed_type& obj) {
+	void to_json(nlohmann::json& j, const phoenix::WaveSpeed& obj) {
 		switch (obj) {
-		case wave_speed_type::none:
+		case WaveSpeed::NONE:
 			j = "none";
 			break;
-		case wave_speed_type::slow:
+		case WaveSpeed::SLOW:
 			j = "slow";
 			break;
-		case wave_speed_type::normal:
+		case WaveSpeed::NORMAL:
 			j = "normal";
 			break;
-		case wave_speed_type::fast:
+		case WaveSpeed::FAST:
 			j = "fast";
 			break;
 		}
 	}
 
-	void to_json(nlohmann::json& j, const px::alpha_function& obj) {
+	void to_json(nlohmann::json& j, const phoenix::AlphaFunction& obj) {
 		switch (obj) {
-		case alpha_function::default_:
+		case AlphaFunction::DEFAULT:
 			j = "default";
 			break;
-		case alpha_function::none:
+		case AlphaFunction::NONE:
 			j = "none";
 			break;
-		case alpha_function::blend:
+		case AlphaFunction::BLEND:
 			j = "blend";
 			break;
-		case alpha_function::add:
+		case AlphaFunction::ADD:
 			j = "add";
 			break;
-		case alpha_function::sub:
+		case AlphaFunction::SUBTRACT:
 			j = "sub";
 			break;
-		case alpha_function::mul:
+		case AlphaFunction::MULTIPLY:
 			j = "mul";
 			break;
-		case alpha_function::mul2:
+		case AlphaFunction::MULTIPLY_ALT:
 			j = "mul2";
 			break;
 		}
 	}
 
-	void to_json(nlohmann::json& j, const px::material& obj) {
+	void to_json(nlohmann::json& j, const phoenix::Material& obj) {
 		j = {
 		    {"name", obj.name},
 		    {"group", obj.group},
@@ -345,7 +348,7 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::vertex_feature& obj) {
+	void to_json(nlohmann::json& j, const phoenix::VertexFeature& obj) {
 		j = {
 		    {"texture", obj.texture},
 		    {"light", obj.light},
@@ -353,7 +356,7 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::light_map& obj) {
+	void to_json(nlohmann::json& j, const phoenix::LightMap& obj) {
 		j = {
 		    {"image", *obj.image},
 		    {"normals", {obj.normals[0], obj.normals[1]}},
@@ -361,7 +364,7 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::polygon_flags& obj) {
+	void to_json(nlohmann::json& j, const phoenix::PolygonFlags& obj) {
 		j = {
 		    {"isPortal", obj.is_portal},
 		    {"isOcclude", obj.is_occluder},
@@ -376,7 +379,7 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::polygon_list& obj) {
+	void to_json(nlohmann::json& j, const phoenix::PolygonList& obj) {
 		j = {
 		    {"materialIndices", obj.material_indices},
 		    {"lightmapIndices", obj.lightmap_indices},
@@ -386,7 +389,7 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::mesh& obj) {
+	void to_json(nlohmann::json& j, const phoenix::Mesh& obj) {
 		j = {{"date", obj.date},
 		     {"name", obj.name},
 		     {"bbox", obj.bbox},
@@ -398,7 +401,7 @@ namespace phoenix {
 		     {"polygons", obj.polygons}};
 	}
 
-	void to_json(nlohmann::json& j, const px::way_point& obj) {
+	void to_json(nlohmann::json& j, const phoenix::WayPoint& obj) {
 		j = {
 		    {"name", obj.name},
 		    {"waterDepth", obj.water_depth},
@@ -409,21 +412,21 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::way_edge& obj) {
+	void to_json(nlohmann::json& j, const phoenix::WayEdge& obj) {
 		j = {
 		    {"a", obj.a},
 		    {"b", obj.b},
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::way_net& obj) {
+	void to_json(nlohmann::json& j, const phoenix::WayNet& obj) {
 		j = {
 		    {"waypoints", obj.waypoints},
 		    {"edges", obj.edges},
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::bsp_sector& obj) {
+	void to_json(nlohmann::json& j, const phoenix::BspSector& obj) {
 		j = {
 		    {"name", obj.name},
 		    {"nodeIndices", obj.node_indices},
@@ -431,7 +434,7 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::bsp_node& obj) {
+	void to_json(nlohmann::json& j, const phoenix::BspNode& obj) {
 		j = {
 		    {"plane", obj.plane},
 		    {"bbox", obj.bbox},
@@ -443,9 +446,9 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, const px::bsp_tree& obj) {
+	void to_json(nlohmann::json& j, const phoenix::BspTree& obj) {
 		j = {
-		    {"mode", obj.mode == bsp_tree_mode::indoor ? "indoor" : "outdoor"},
+		    {"mode", obj.mode == BspTreeType::INDOOR ? "indoor" : "outdoor"},
 		    {"leafPolygons", obj.leaf_polygons},
 		    {"lightPoints", obj.light_points},
 		    {"sectors", obj.sectors},
@@ -455,23 +458,23 @@ namespace phoenix {
 		};
 	}
 
-	void to_json(nlohmann::json& j, px::vob_type obj) {
-		j = vob_type_map.at(obj);
+	void to_json(nlohmann::json& j, phoenix::VobType obj) {
+		j = VobType_map.at(obj);
 	}
 
-	void to_json(nlohmann::json& j, const px::vob& obj) {
+	void to_json(nlohmann::json& j, const phoenix::VirtualObject& obj) {
 		// TODO
 		j = {
 		    {"type", obj.type},
 		};
 	}
 
-	void to_json(nlohmann::json& j, const std::unique_ptr<px::vob>& obj) {
+	void to_json(nlohmann::json& j, const std::unique_ptr<phoenix::VirtualObject>& obj) {
 		// TODO
 		to_json(j, *obj);
 	}
 
-	void to_json(nlohmann::json& j, const px::world& obj) {
+	void to_json(nlohmann::json& j, const phoenix::World& obj) {
 		j = {
 		    {"vobTree", obj.world_vobs},
 		    {"mesh", obj.world_mesh},
@@ -480,146 +483,143 @@ namespace phoenix {
 		};
 	}
 
-	namespace mds {
-		void to_json(nlohmann::json& j, const px::mds::skeleton& obj) {
-			j = {{"name", obj.name}, {"disableMesh", obj.disable_mesh}};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsSkeleton& obj) {
+		j = {{"name", obj.name}, {"disableMesh", obj.disable_mesh}};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::animation_combination& obj) {
-			j = {
-			    {"name", obj.name},
-			    {"layer", obj.layer},
-			    {"next", obj.next},
-			    {"blendIn", obj.blend_in},
-			    {"blendOut", obj.blend_out},
-			    {"blendFlags", obj.flags},
-			    {"model", obj.model},
-			    {"lastFrame", obj.last_frame},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsAnimationCombine& obj) {
+		j = {
+			{"name", obj.name},
+			{"layer", obj.layer},
+			{"next", obj.next},
+			{"blendIn", obj.blend_in},
+			{"blendOut", obj.blend_out},
+			{"blendFlags", obj.flags},
+			{"model", obj.model},
+			{"lastFrame", obj.last_frame},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::event_tag& obj) {
-			j = {
-			    {"frame", obj.frame},
-			    {"type", obj.type},
-			    {"slot", obj.slot},
-			    {"slot2", obj.slot2},
-			    {"item", obj.item},
-			    {"frames", obj.frames},
-			    {"fightMode", obj.fight_mode},
-			    {"attached", obj.attached},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsEventTag& obj) {
+		j = {
+			{"frame", obj.frame},
+			{"type", obj.type},
+			{"slot", obj.slot},
+			{"slot2", obj.slot2},
+			{"item", obj.item},
+			{"frames", obj.frames},
+			{"fightMode", obj.fight_mode},
+			{"attached", obj.attached},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::event_pfx& obj) {
-			j = {
-			    {"frame", obj.frame},
-			    {"index", obj.index},
-			    {"name", obj.name},
-			    {"position", obj.position},
-			    {"attached", obj.attached},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsParticleEffect& obj) {
+		j = {
+			{"frame", obj.frame},
+			{"index", obj.index},
+			{"name", obj.name},
+			{"position", obj.position},
+			{"attached", obj.attached},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::event_pfx_stop& obj) {
-			j = {
-			    {"frame", obj.frame},
-			    {"index", obj.index},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsParticleEffectStop& obj) {
+		j = {
+			{"frame", obj.frame},
+			{"index", obj.index},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::event_sfx& obj) {
-			j = {
-			    {"frame", obj.frame},
-			    {"name", obj.name},
-			    {"range", obj.range},
-			    {"emptySlot", obj.empty_slot},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsSoundEffect& obj) {
+		j = {
+			{"frame", obj.frame},
+			{"name", obj.name},
+			{"range", obj.range},
+			{"emptySlot", obj.empty_slot},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::event_sfx_ground& obj) {
-			j = {
-			    {"frame", obj.frame},
-			    {"name", obj.name},
-			    {"range", obj.range},
-			    {"emptySlot", obj.empty_slot},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsSoundEffectGround& obj) {
+		j = {
+			{"frame", obj.frame},
+			{"name", obj.name},
+			{"range", obj.range},
+			{"emptySlot", obj.empty_slot},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::event_morph_animate& obj) {
-			j = {
-			    {"frame", obj.frame},
-			    {"animation", obj.animation},
-			    {"node", obj.node},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsMorphAnimation& obj) {
+		j = {
+			{"frame", obj.frame},
+			{"animation", obj.animation},
+			{"node", obj.node},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::event_camera_tremor& obj) {
-			j = {
-			    {"frame", obj.frame},
-			    {"field1", obj.field1},
-			    {"field2", obj.field2},
-			    {"field3", obj.field3},
-			    {"field4", obj.field4},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsCameraTremor& obj) {
+		j = {
+			{"frame", obj.frame},
+			{"field1", obj.field1},
+			{"field2", obj.field2},
+			{"field3", obj.field3},
+			{"field4", obj.field4},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::animation& obj) {
-			j = {
-			    {"name", obj.name},
-			    {"layer", obj.layer},
-			    {"next", obj.next},
-			    {"blendIn", obj.blend_in},
-			    {"blendOut", obj.blend_out},
-			    {"blendFlags", obj.flags},
-			    {"model", obj.model},
-			    {"direction", obj.direction},
-			    {"firstFrame", obj.first_frame},
-			    {"lastFrame", obj.last_frame},
-			    {"fps", obj.fps},
-			    {"speed", obj.speed},
-			    {"collisionVolumeScale", obj.collision_volume_scale},
+	void to_json(nlohmann::json& j, const phoenix::MdsAnimation& obj) {
+		j = {
+		    {"name", obj.name},
+		    {"layer", obj.layer},
+		    {"next", obj.next},
+		    {"blendIn", obj.blend_in},
+		    {"blendOut", obj.blend_out},
+		    {"blendFlags", obj.flags},
+		    {"model", obj.model},
+		    {"direction", obj.direction},
+		    {"firstFrame", obj.first_frame},
+		    {"lastFrame", obj.last_frame},
+		    {"fps", obj.fps},
+		    {"speed", obj.speed},
+		    {"collisionVolumeScale", obj.collision_volume_scale},
+		    {"events", obj.events},
+		    {"pfx", obj.pfx},
+		    {"pfxStop", obj.pfx_stop},
+		    {"sfx", obj.sfx},
+		    {"sfxGround", obj.sfx_ground},
+		    {"morph", obj.morph},
+		    {"tremors", obj.tremors},
+		};
+	}
 
-			    {"events", obj.events},
-			    {"pfx", obj.pfx},
-			    {"pfxStop", obj.pfx_stop},
-			    {"sfx", obj.sfx},
-			    {"sfxGround", obj.sfx_ground},
-			    {"morph", obj.morph},
-			    {"tremors", obj.tremors},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsAnimationBlend& obj) {
+		j = {
+			{"name", obj.name},
+			{"next", obj.next},
+			{"blendIn", obj.blend_in},
+			{"blendOut", obj.blend_out},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::animation_blending& obj) {
-			j = {
-			    {"name", obj.name},
-			    {"next", obj.next},
-			    {"blendIn", obj.blend_in},
-			    {"blendOut", obj.blend_out},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsAnimationAlias& obj) {
+		j = {
+			{"name", obj.name},
+			{"layer", obj.layer},
+			{"next", obj.next},
+			{"blendIn", obj.blend_in},
+			{"blendOut", obj.blend_out},
+			{"blendFlags", obj.flags},
+			{"alias", obj.alias},
+			{"direction", obj.direction},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::animation_alias& obj) {
-			j = {
-			    {"name", obj.name},
-			    {"layer", obj.layer},
-			    {"next", obj.next},
-			    {"blendIn", obj.blend_in},
-			    {"blendOut", obj.blend_out},
-			    {"blendFlags", obj.flags},
-			    {"alias", obj.alias},
-			    {"direction", obj.direction},
-			};
-		}
+	void to_json(nlohmann::json& j, const phoenix::MdsModelTag& obj) {
+		j = {
+			{"bone", obj.bone},
+		};
+	}
 
-		void to_json(nlohmann::json& j, const px::mds::model_tag& obj) {
-			j = {
-			    {"bone", obj.bone},
-			};
-		}
-	} // namespace mds
-
-	void to_json(nlohmann::json& j, const px::model_script& obj) {
+	void to_json(nlohmann::json& j, const phoenix::ModelScript& obj) {
 		j = {
 		    {"skeleton", obj.skeleton},
 		    {"meshes", obj.meshes},

@@ -1,7 +1,8 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
-#include <phoenix/texture.hh>
-#include <phoenix/vdfs.hh>
+#include <phoenix/Texture.hh>
+#include <phoenix/Vfs.hh>
+#include <phoenix/Buffer.hh>
 
 #include <CLI/App.hpp>
 #include <fmt/format.h>
@@ -12,8 +13,6 @@
 #include <iostream>
 
 #include "config.hh"
-
-namespace px = phoenix;
 
 static constexpr const auto HELP_MESSAGE =
     R"(USAGE
@@ -59,18 +58,19 @@ static void write_tga(const std::optional<std::string>& file,
 	}
 }
 
-px::buffer open_buffer(const std::optional<std::string>& input, const std::optional<std::string>& vdf) {
+phoenix::Buffer open_buffer(const std::optional<std::string>& input, const std::optional<std::string>& vdf) {
 	if (input) {
 		if (vdf) {
-			const auto container = px::vdf_file::open(*vdf);
-			if (auto* entry = container.find_entry(*input); entry != nullptr) {
+			auto container = phoenix::Vfs {};
+			container.mount_disk(*vdf);
+			if (auto* entry = container.find(*input); entry != nullptr) {
 				return entry->open();
 			} else {
 				fmt::print(stderr, "the file named {} was not found in the VDF {}", *input, *vdf);
-				return phoenix::buffer::empty();
+				return phoenix::Buffer::empty();
 			}
 		} else {
-			return phoenix::buffer::mmap(*input);
+			return phoenix::Buffer::mmap(*input);
 		}
 	} else {
 		std::vector<std::byte> data {};
@@ -81,17 +81,17 @@ px::buffer open_buffer(const std::optional<std::string>& input, const std::optio
 
 		if (data.empty()) {
 			fmt::print(stderr, "no data provided via stdin");
-			return phoenix::buffer::empty();
+			return phoenix::Buffer::empty();
 		}
 
 		// remove the EOF byte
 		data.pop_back();
-		return phoenix::buffer::of(std::move(data));
+		return phoenix::Buffer::of(std::move(data));
 	}
 }
 
 int main(int argc, char** argv) {
-	px::logging::use_default_logger();
+	phoenix::Logging::use_default_logger();
 
 	CLI::App app {"Dump ZenGin files to JSON."};
 
@@ -122,10 +122,10 @@ int main(int argc, char** argv) {
 	} else {
 		try {
 			auto in = open_buffer(file, vdf);
-			if (in == px::buffer::empty())
+			if (in == phoenix::Buffer::empty())
 				return EXIT_FAILURE;
 
-			auto texture = phoenix::texture::parse(in);
+			auto texture = phoenix::Texture::parse(in);
 
 			if (all_mipmaps) {
 				if (!std::filesystem::is_directory(*output)) {

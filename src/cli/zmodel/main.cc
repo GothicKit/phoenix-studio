@@ -1,10 +1,11 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
-#include <phoenix/model.hh>
-#include <phoenix/morph_mesh.hh>
-#include <phoenix/proto_mesh.hh>
-#include <phoenix/vdfs.hh>
-#include <phoenix/world.hh>
+#include <phoenix/Model.hh>
+#include <phoenix/MorphMesh.hh>
+#include <phoenix/ModelMesh.hh>
+#include <phoenix/MultiResolutionMesh.hh>
+#include <phoenix/Vfs.hh>
+#include <phoenix/World.hh>
 
 #include <CLI/App.hpp>
 #include <fmt/format.h>
@@ -14,9 +15,7 @@
 
 #include "config.hh"
 
-namespace px = phoenix;
-
-static void dump_material(std::ostream& mtl, std::string_view name, const std::vector<phoenix::material>& materials) {
+static void dump_material(std::ostream& mtl, const std::vector<phoenix::Material>& materials) {
 	for (const auto& mat : materials) {
 		if (!mat.texture.empty()) {
 			mtl << "newmtl " << mat.name << "\n";
@@ -29,7 +28,7 @@ static void dump_material(std::ostream& mtl, std::string_view name, const std::v
 static void dump_wavefront(std::ostream& out,
                            std::ostream* material_out,
                            std::string_view mtllib_name,
-                           const phoenix::proto_mesh& mesh) {
+                           const phoenix::MultiResolutionMesh& mesh) {
 	out << "# zmodel exported mesh\n";
 	if (material_out != nullptr)
 		out << "mtllib " << mtllib_name << ".mtl\n\n";
@@ -67,12 +66,12 @@ static void dump_wavefront(std::ostream& out,
 	}
 
 	if (material_out != nullptr) {
-		dump_material(*material_out, mtllib_name, mesh.materials);
+		dump_material(*material_out, mesh.materials);
 	}
 }
 
 static void
-dump_wavefront(std::ostream& out, std::ostream* material_out, std::string_view mtllib_name, const phoenix::mesh& mesh) {
+dump_wavefront(std::ostream& out, std::ostream* material_out, std::string_view mtllib_name, const phoenix::Mesh& mesh) {
 	out << "# zmodel exported mesh\n";
 	if (material_out != nullptr)
 		out << "mtllib " << mtllib_name << ".mtl\n\n";
@@ -122,22 +121,24 @@ dump_wavefront(std::ostream& out, std::ostream* material_out, std::string_view m
 	}
 
 	if (material_out != nullptr) {
-		dump_material(*material_out, mtllib_name, mesh.materials);
+		dump_material(*material_out, mesh.materials);
 	}
 }
 
-px::buffer open_buffer(const std::optional<std::string>& input, const std::optional<std::string>& vdf) {
+phoenix::Buffer open_buffer(const std::optional<std::string>& input, const std::optional<std::string>& vdf) {
 	if (input) {
 		if (vdf) {
-			const auto container = px::vdf_file::open(*vdf);
-			if (auto* entry = container.find_entry(*input); entry != nullptr) {
+			auto container = phoenix::Vfs {};
+			container.mount_disk(*vdf);
+
+			if (auto* entry = container.find(*input); entry != nullptr) {
 				return entry->open();
 			} else {
 				fmt::print(stderr, "the file named {} was not found in the VDF {}", *input, *vdf);
-				return px::buffer::empty();
+				return phoenix::Buffer::empty();
 			}
 		} else {
-			return px::buffer::mmap(*input);
+			return phoenix::Buffer::mmap(*input);
 		}
 	} else {
 		std::vector<std::byte> data {};
@@ -148,17 +149,17 @@ px::buffer open_buffer(const std::optional<std::string>& input, const std::optio
 
 		if (data.empty()) {
 			fmt::print(stderr, "no data provided via stdin");
-			return px::buffer::empty();
+			return phoenix::Buffer::empty();
 		}
 
 		// remove the EOF byte
 		data.pop_back();
-		return px::buffer::of(std::move(data));
+		return phoenix::Buffer::of(std::move(data));
 	}
 }
 
 int main(int argc, char** argv) {
-	px::logging::use_default_logger();
+	phoenix::Logging::use_default_logger();
 
 	CLI::App app {"Dump ZenGin files to JSON."};
 
@@ -200,25 +201,25 @@ int main(int argc, char** argv) {
 				material_out = new std::ofstream {*material};
 
 			if (phoenix::iequals(extension, "MRM")) {
-				auto mesh = phoenix::proto_mesh::parse(in);
+				auto mesh = phoenix::MultiResolutionMesh::parse(in);
 				dump_wavefront(*model_out, material_out, material.value_or(""), mesh);
 			} else if (phoenix::iequals(extension, "ZEN")) {
-				auto wld = phoenix::world::parse(in);
+				auto wld = phoenix::World::parse(in);
 				dump_wavefront(*model_out, material_out, material.value_or(""), wld.world_mesh);
 			} else if (phoenix::iequals(extension, "MSH")) {
-				auto msh = phoenix::mesh::parse(in, {});
+				auto msh = phoenix::Mesh::parse(in, {});
 				dump_wavefront(*model_out, material_out, material.value_or(""), msh);
 			} else if (phoenix::iequals(extension, "MMB")) {
-				auto msh = phoenix::morph_mesh::parse(in);
+				auto msh = phoenix::MorphMesh::parse(in);
 				dump_wavefront(*model_out, material_out, material.value_or(""), msh.mesh);
 			} else if (phoenix::iequals(extension, "MDL")) {
-				auto msh = phoenix::model::parse(in);
+				auto msh = phoenix::Model::parse(in);
 				dump_wavefront(*model_out,
 				               material_out,
 				               material.value_or(""),
 				               msh.mesh.meshes[0].mesh); // FIXME: support dumping multiple meshes
 			} else if (phoenix::iequals(extension, "MDM")) {
-				auto msh = phoenix::model_mesh::parse(in);
+				auto msh = phoenix::ModelMesh::parse(in);
 				dump_wavefront(*model_out,
 				               material_out,
 				               material.value_or(""),

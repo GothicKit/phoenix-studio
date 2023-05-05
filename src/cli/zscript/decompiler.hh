@@ -1,32 +1,32 @@
 // Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
 // SPDX-License-Identifier: MIT
 #pragma once
-#include <phoenix/script.hh>
+#include <phoenix/DaedalusScript.hh>
 
 #include <string>
 
-constexpr std::string_view get_type_name(phoenix::datatype tp) {
-	using phoenix::datatype;
+constexpr std::string_view get_type_name(phoenix::DaedalusDataType tp) {
+	using phoenix::DaedalusDataType;
 	switch (tp) {
-	case datatype::void_:
+	case DaedalusDataType::VOID:
 		return "void";
-	case datatype::float_:
+	case DaedalusDataType::FLOAT:
 		return "float";
-	case datatype::integer:
+	case DaedalusDataType::INT:
 		return "int";
-	case datatype::string:
+	case DaedalusDataType::STRING:
 		return "string";
-	case datatype::class_:
+	case DaedalusDataType::CLASS:
 		return "class";
-	case datatype::function:
+	case DaedalusDataType::FUNCTION:
 		return "func";
-	case datatype::prototype:
+	case DaedalusDataType::PROTOTYPE:
 		return "prototype";
-	case datatype::instance:
+	case DaedalusDataType::INSTANCE:
 		return "instance";
 	default:
 		return "*ERR*";
 	}
 }
 
-std::string decompile(const phoenix::script& script, const phoenix::symbol& sym, int indent = 0);
+std::string decompile(const phoenix::DaedalusScript& script, const phoenix::DaedalusSymbol& sym, int indent = 0);
