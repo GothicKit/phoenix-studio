@@ -17,6 +17,7 @@ namespace studio {
 
 		GlTexture const& load_texture(std::string const& name);
 		phoenix::World load_world(std::string const& name);
+		phoenix::MultiResolutionMesh load_mesh(std::string const& name);
 
 	private:
 		phoenix::Vfs _m_vfs;

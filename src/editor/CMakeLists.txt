@@ -10,7 +10,7 @@ execute_process(
 
 configure_file(Config.hh.in ${CMAKE_CURRENT_BINARY_DIR}/Config.hh @ONLY)
 
-add_executable(editor Main.cc Window.cc Resources.cc gl/GlShader.cc gl/GlTexture.cc gl/GlArray.cc)
+add_executable(editor Main.cc Window.cc Resources.cc gl/GlShader.cc gl/GlTexture.cc gl/GlArray.cc World.cc World.hh StaticModel.cc StaticModel.hh)
 target_link_libraries(editor PRIVATE phoenix fmt glad glfw)
 target_include_directories(editor PRIVATE ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 

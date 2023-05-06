@@ -26,6 +26,16 @@ namespace studio {
 		glShaderSource(shader, 1, &data, &size);
 		glCompileShader(shader);
 
+		GLint status;
+		glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+		if (status != GL_TRUE) {
+			GLchar message[256];
+			GLint length;
+			glGetShaderInfoLog(shader, sizeof message, &length, message);
+			glDeleteShader(shader);
+			throw std::runtime_error {std::string {message, static_cast<std::size_t>(length)}};
+		}
+
 		_m_shaders.push_back(shader);
 		return *this;
 	}
@@ -39,15 +49,27 @@ namespace studio {
 		glLinkProgram(program);
 		glValidateProgram(program);
 
+		GLint status;
+		glGetProgramiv(program, GL_LINK_STATUS, &status);
+		if (status != GL_TRUE) {
+			GLchar message[256];
+			GLint length;
+			glGetProgramInfoLog(program, sizeof message, &length, message);
+			glDeleteProgram(program);
+			throw std::runtime_error {std::string {message, static_cast<std::size_t>(length)}};
+		}
+
 		for (auto shader : _m_shaders)
 			glDeleteShader(shader);
 
 		return GlShader {program};
 	}
 
+	GlShader::GlShader() : _m_id(0) {}
+
 	GlShader::GlShader(GLuint program) : _m_id(program) {}
 
-	GlShader::GlShader() noexcept {
+	GlShader::~GlShader() noexcept {
 		if (_m_id != 0) {
 			glDeleteProgram(_m_id);
 		}
@@ -72,12 +94,5 @@ namespace studio {
 
 	void GlShader::deactivate() const {
 		glUseProgram(0);
-	}
-
-	template <>
-	GlUniform<glm::mat4> GlShader::get_uniform(std::string const& name) const {
-		// TODO: Check type
-		auto location = glGetUniformLocation(_m_id, name.c_str());
-		return GlUniform<glm::mat4>(location);
 	}
 } // namespace studio

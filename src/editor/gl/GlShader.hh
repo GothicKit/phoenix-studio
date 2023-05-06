@@ -17,6 +17,8 @@ namespace studio {
 	template <typename T>
 	class GlUniform {
 	public:
+		GlUniform() : _m_location(-1) {}
+
 		void set(T const& val) {
 			if constexpr (std::is_same_v<T, glm::mat4>) {
 				glUniformMatrix4fv(_m_location, 1, GL_FALSE, glm::value_ptr(val));
@@ -35,11 +37,12 @@ namespace studio {
 
 	class GlShader {
 	public:
-		GlShader() noexcept;
+		GlShader();
 		GlShader(GlShader const&) = delete;
-		GlShader(GlShader&&)noexcept ;
+		GlShader(GlShader&&) noexcept;
 		GlShader& operator=(GlShader const&) = delete;
-		GlShader& operator=(GlShader&&)noexcept ;
+		GlShader& operator=(GlShader&&) noexcept;
+		~GlShader() noexcept;
 
 		class Builder {
 		public:
@@ -59,10 +62,10 @@ namespace studio {
 		void deactivate() const;
 
 		template <typename T>
-		GlUniform<T> get_uniform(std::string const& name) const = delete;
-
-		template <>
-		[[nodiscard]] GlUniform<glm::mat4> get_uniform(std::string const& name) const;
+		GlUniform<T> get_uniform(std::string const& name) const {
+			auto location = glGetUniformLocation(_m_id, name.c_str());
+			return GlUniform<T>(location);
+		}
 
 		static Builder create();
 

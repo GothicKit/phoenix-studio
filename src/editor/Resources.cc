@@ -49,4 +49,16 @@ namespace studio {
 			throw std::runtime_error {"World not found!"};
 		return phoenix::World::parse(node->open());
 	}
+
+	phoenix::MultiResolutionMesh Resources::load_mesh(const std::string& name) {
+
+		// TODO: 3DS loader
+		auto* node = _m_vfs.find(name);
+		if (node == nullptr)
+			node = _m_vfs.find(name.substr(0, name.rfind('.')) + ".MRM");
+		if (node == nullptr)
+			throw std::runtime_error {"Mesh not found"};
+
+		return phoenix::MultiResolutionMesh::parse(node->open());
+	}
 } // namespace studio
