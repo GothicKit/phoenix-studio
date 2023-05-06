@@ -1,0 +1,7 @@
+// Copyright © 2022 Luis Michaelis <lmichaelis.all+dev@gmail.com>
+// SPDX-License-Identifier: MIT
+#pragma once
+
+namespace studio {
+    constexpr const auto VERSION = "@PROJECT_VERSION@+@GIT_HASH@";
+}

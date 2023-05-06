@@ -47,7 +47,7 @@ static void do_list(const fs::path& self, const std::vector<phoenix::VfsNode>& e
 }
 
 int main(int argc, char** argv) {
-	px::logging::use_default_logger();
+	px::Logging::use_default_logger();
 
 	CLI::App app {"Extracts or lists files from VDF archives."};
 
@@ -72,9 +72,9 @@ int main(int argc, char** argv) {
 		if (display_version) {
 			fmt::print("zvdfs v{}\n", ZVDFS_VERSION);
 		} else {
-			auto in = px::buffer::empty();
+			auto in = px::Buffer::empty();
 			if (file) {
-				in = px::buffer::mmap(*file);
+				in = px::Buffer::mmap(*file);
 			} else {
 				std::vector<std::byte> data {};
 
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
 				// remove the EOF byte
 				data.pop_back();
-				in = phoenix::buffer::of(std::move(data));
+				in = phoenix::Buffer::of(std::move(data));
 			}
 
 			phoenix::Vfs vfs {};

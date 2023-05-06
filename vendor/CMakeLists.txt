@@ -6,6 +6,8 @@ option(PHOENIX_DISABLE_SANITIZERS ${PSTUDIO_DISABLE_SANITIZERS})
 add_subdirectory(phoenix)
 add_subdirectory(json)
 add_subdirectory(fmt)
+add_subdirectory(glad)
+add_subdirectory(glfw)
 
 set(CLI11_PRECOMPILED ON)
 add_subdirectory(CLI11)
