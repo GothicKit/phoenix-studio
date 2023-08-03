@@ -77,7 +77,8 @@ static std::unordered_map<opcode, std::string> OPCODE_STR {
 std::string decompile_statement(const script& script,
                                 const stack_frame& stmt,
                                 std::vector<stack_frame>& stack,
-                                local_storage& locals) {
+                                local_storage& locals,
+                                bool as_function = false) {
 	switch (stmt.instr.op) {
 	case opcode::add:
 	case opcode::sub:
@@ -174,10 +175,11 @@ std::string decompile_statement(const script& script,
 				stack.pop_back();
 			}
 
+			std::string decompiled = decompile_statement(script, a_instr, stack, locals, params[i - 1]->type() == phoenix::datatype::function);
 			if (i == 0 || call.size() == 0) {
-				call = fmt::format("{}{}", decompile_statement(script, a_instr, stack, locals), call);
+				call = fmt::format("{}{}", decompiled, call);
 			} else {
-				call = fmt::format("{}, {}", decompile_statement(script, a_instr, stack, locals), call);
+				call = fmt::format("{}, {}", decompiled, call);
 			}
 		}
 
@@ -195,16 +197,23 @@ std::string decompile_statement(const script& script,
 				stack.pop_back();
 			}
 
+			std::string decompiled = decompile_statement(script, a_instr, stack, locals, params[i - 1]->type() == phoenix::datatype::function);
+
 			if (i == 0 || call.size() == 0) {
-				call = fmt::format("{}{}", decompile_statement(script, a_instr, stack, locals), call);
+				call = fmt::format("{}{}", decompiled, call);
 			} else {
-				call = fmt::format("{}, {}", decompile_statement(script, a_instr, stack, locals), call);
+				call = fmt::format("{}, {}", decompiled, call);
 			}
 		}
 
 		return fmt::format("{}({})", sym->name(), call);
 	}
 	case opcode::pushi: {
+		if (as_function) {
+			auto* sym = script.find_symbol_by_index(stmt.instr.immediate);
+			return sym != nullptr ? sym->name() : ("/* (UNKNOWN FUNCTION) */ " + std::to_string(stmt.instr.immediate));
+		}
+
 		if (stmt.instr.immediate > 1000) {
 			return std::to_string(stmt.instr.immediate); // TODO: Optimize obvious bitshifts and multiples of 16
 		}
