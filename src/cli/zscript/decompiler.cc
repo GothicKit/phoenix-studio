@@ -175,7 +175,11 @@ std::string decompile_statement(const script& script,
 				stack.pop_back();
 			}
 
-			std::string decompiled = decompile_statement(script, a_instr, stack, locals, params[i - 1]->type() == phoenix::datatype::function);
+			std::string decompiled = decompile_statement(script,
+			                                             a_instr,
+			                                             stack,
+			                                             locals,
+			                                             params[i - 1]->type() == phoenix::datatype::function);
 			if (i == 0 || call.size() == 0) {
 				call = fmt::format("{}{}", decompiled, call);
 			} else {
@@ -197,7 +201,11 @@ std::string decompile_statement(const script& script,
 				stack.pop_back();
 			}
 
-			std::string decompiled = decompile_statement(script, a_instr, stack, locals, params[i - 1]->type() == phoenix::datatype::function);
+			std::string decompiled = decompile_statement(script,
+			                                             a_instr,
+			                                             stack,
+			                                             locals,
+			                                             params[i - 1]->type() == phoenix::datatype::function);
 
 			if (i == 0 || call.size() == 0) {
 				call = fmt::format("{}{}", decompiled, call);
