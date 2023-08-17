@@ -30,6 +30,8 @@ enum class file_format {
 	tex,
 	mds,
 	msb,
+	mrm,
+	mdm,
 	unknown,
 };
 
@@ -52,6 +54,10 @@ int dump(file_format fmt, px::buffer& in, bool bson) {
 		output = phoenix::model_script::parse(in);
 	} else if (fmt == file_format::msb) {
 		output = phoenix::model_script::parse(in);
+	} else if (fmt == file_format::mrm) {
+		output = phoenix::proto_mesh::parse(in);
+	} else if (fmt == file_format::mdm) {
+		output = phoenix::model_mesh::parse(in);
 	} else {
 		fmt::print(stderr, "format not supported");
 		return EXIT_FAILURE;
@@ -73,8 +79,16 @@ file_format detect_file_format(px::buffer&& buf) {
 		return file_format::tex;
 
 	buf.reset();
+	if (buf.get_ushort() == 0xD000)
+		return file_format::mdm;
+
+	buf.reset();
 	if (buf.get_ushort() == 0xD100)
 		return file_format::mdh;
+
+	buf.reset();
+	if (buf.get_ushort() == 0xB100)
+		return file_format::mrm;
 
 	buf.reset();
 	if (buf.get_ushort() == 0xA000)

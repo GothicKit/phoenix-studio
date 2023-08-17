@@ -480,6 +480,80 @@ namespace phoenix {
 		};
 	}
 
+	void to_json(nlohmann::json& j, const px::edge& obj) {
+		j = {{"edges", obj.edges}};
+	}
+
+	void to_json(nlohmann::json& j, const px::triangle_edge& obj) {
+		j = {{"edges", obj.edges}};
+	}
+
+	void to_json(nlohmann::json& j, const px::triangle& obj) {
+		j = {{"wedges", obj.wedges}};
+	}
+
+	void to_json(nlohmann::json& j, const px::wedge& obj) {
+		j = {
+		    {"index", obj.index},
+		    {"normal", obj.normal},
+		    {"texture", obj.texture},
+		};
+	}
+
+	void to_json(nlohmann::json& j, const px::sub_mesh& obj) {
+		j = {
+		    {"colors", obj.colors},
+		    {"edgeScores", obj.edge_scores},
+		    {"edges", obj.edges},
+		    {"material", obj.mat},
+		    {"triangleEdges", obj.triangle_edges},
+		    {"trianglePlaneIndices", obj.triangle_plane_indices},
+		    {"triangles", obj.triangles},
+		    {"wedgeMap", obj.wedge_map},
+		    {"wedges", obj.wedges},
+		};
+	}
+
+	void to_json(nlohmann::json& j, const px::proto_mesh& obj) {
+		j = {
+		    {"materials", obj.materials},
+		    {"normals", obj.normals},
+		    {"alphaTest", obj.alpha_test},
+		    {"bbox", obj.bbox},
+		    {"obbox", obj.obbox},
+		    {"positions", obj.positions},
+		    {"subMeshes", obj.sub_meshes},
+		};
+	}
+
+	void to_json(nlohmann::json& j, const px::wedge_normal& obj) {
+		j = {
+		    {"index", obj.index},
+		    {"normal", obj.normal},
+		};
+	}
+	void to_json(nlohmann::json& j, const px::weight_entry& obj) {
+		j = {
+		    {"position", obj.position},
+		    {"nodeIndex", obj.node_index},
+		    {"weight", obj.weight},
+		};
+	}
+
+	void to_json(nlohmann::json& j, const px::softskin_mesh& obj) {
+		j = {
+		    {"bboxes", obj.bboxes},
+		    {"mesh", obj.mesh},
+		    {"nodes", obj.nodes},
+		    {"wedgeNormals", obj.wedge_normals},
+		    {"weights", obj.weights},
+		};
+	}
+
+	void to_json(nlohmann::json& j, const px::model_mesh& obj) {
+		j = {{"checksum", obj.checksum}, {"meshes", obj.meshes}, {"attachments", obj.attachments}};
+	}
+
 	namespace mds {
 		void to_json(nlohmann::json& j, const px::mds::skeleton& obj) {
 			j = {{"name", obj.name}, {"disableMesh", obj.disable_mesh}};
