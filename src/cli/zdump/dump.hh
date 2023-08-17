@@ -5,6 +5,7 @@
 #include <phoenix/font.hh>
 #include <phoenix/mesh.hh>
 #include <phoenix/messages.hh>
+#include <phoenix/model.hh>
 #include <phoenix/model_hierarchy.hh>
 #include <phoenix/model_mesh.hh>
 #include <phoenix/model_script.hh>
@@ -47,4 +48,6 @@ namespace phoenix {
 	void to_json(nlohmann::json& j, const px::morph_mesh& obj);
 	void to_json(nlohmann::json& j, const px::morph_animation& obj);
 	void to_json(nlohmann::json& j, const px::morph_source& obj);
+
+	void to_json(nlohmann::json& j, const px::model& obj);
 } // namespace phoenix

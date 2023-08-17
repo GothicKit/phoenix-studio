@@ -586,6 +586,13 @@ namespace phoenix {
 		};
 	}
 
+	void to_json(nlohmann::json& j, const px::model& obj) {
+		j = {
+			{"mesh", obj.mesh},
+			{"hierarchy", obj.hierarchy},
+		};
+	}
+
 	namespace mds {
 		void to_json(nlohmann::json& j, const px::mds::skeleton& obj) {
 			j = {{"name", obj.name}, {"disableMesh", obj.disable_mesh}};
