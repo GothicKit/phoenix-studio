@@ -80,7 +80,7 @@ dump_wavefront(std::ostream& out, std::ostream* material_out, std::string_view m
 	out << "# vertices\n";
 
 	for (const auto& item : mesh.vertices) {
-		out << "v " << item.x << " " << item.y << " " << item.z << "\n";
+		out << "v " << item.z << " " << item.y << " " << item.x << "\n";
 	}
 
 	auto& mats = mesh.materials;
