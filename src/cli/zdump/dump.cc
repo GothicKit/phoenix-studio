@@ -554,6 +554,38 @@ namespace phoenix {
 		j = {{"checksum", obj.checksum}, {"meshes", obj.meshes}, {"attachments", obj.attachments}};
 	}
 
+	void to_json(nlohmann::json& j, const px::morph_animation& obj) {
+		j = {
+		    {"samples", obj.samples},
+		    {"name", obj.name},
+		    {"blendIn", obj.blend_in},
+		    {"blendOut", obj.blend_out},
+		    {"duration", obj.duration},
+		    {"flags", obj.flags},
+		    {"frameCount", obj.frame_count},
+		    {"layer", obj.layer},
+		    {"speed", obj.speed},
+		    {"vertices", obj.vertices},
+		};
+	}
+
+	void to_json(nlohmann::json& j, const px::morph_source& obj) {
+		j = {
+		    {"fileDate", obj.file_date},
+		    {"fileName", obj.file_name},
+		};
+	}
+
+	void to_json(nlohmann::json& j, const px::morph_mesh& obj) {
+		j = {
+		    {"name", obj.name},
+		    {"mesh", obj.mesh},
+		    {"animations", obj.animations},
+		    {"morphPositions", obj.morph_positions},
+		    {"sources", obj.sources},
+		};
+	}
+
 	namespace mds {
 		void to_json(nlohmann::json& j, const px::mds::skeleton& obj) {
 			j = {{"name", obj.name}, {"disableMesh", obj.disable_mesh}};

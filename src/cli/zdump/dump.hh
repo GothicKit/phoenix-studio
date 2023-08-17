@@ -6,8 +6,9 @@
 #include <phoenix/mesh.hh>
 #include <phoenix/messages.hh>
 #include <phoenix/model_hierarchy.hh>
-#include <phoenix/model_script.hh>
 #include <phoenix/model_mesh.hh>
+#include <phoenix/model_script.hh>
+#include <phoenix/morph_mesh.hh>
 #include <phoenix/texture.hh>
 #include <phoenix/vdfs.hh>
 #include <phoenix/world.hh>
@@ -43,4 +44,7 @@ namespace phoenix {
 	void to_json(nlohmann::json& j, const px::softskin_mesh& obj);
 	void to_json(nlohmann::json& j, const px::wedge_normal& obj);
 	void to_json(nlohmann::json& j, const px::weight_entry& obj);
+	void to_json(nlohmann::json& j, const px::morph_mesh& obj);
+	void to_json(nlohmann::json& j, const px::morph_animation& obj);
+	void to_json(nlohmann::json& j, const px::morph_source& obj);
 } // namespace phoenix

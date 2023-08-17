@@ -32,6 +32,7 @@ enum class file_format {
 	msb,
 	mrm,
 	mdm,
+	mmb,
 	unknown,
 };
 
@@ -58,6 +59,8 @@ int dump(file_format fmt, px::buffer& in, bool bson) {
 		output = phoenix::proto_mesh::parse(in);
 	} else if (fmt == file_format::mdm) {
 		output = phoenix::model_mesh::parse(in);
+	} else if (fmt == file_format::mmb) {
+		output = phoenix::morph_mesh::parse(in);
 	} else {
 		fmt::print(stderr, "format not supported");
 		return EXIT_FAILURE;
@@ -81,6 +84,10 @@ file_format detect_file_format(px::buffer&& buf) {
 	buf.reset();
 	if (buf.get_ushort() == 0xD000)
 		return file_format::mdm;
+
+	buf.reset();
+	if (buf.get_ushort() == 0xE000)
+		return file_format::mmb;
 
 	buf.reset();
 	if (buf.get_ushort() == 0xD100)
