@@ -88,7 +88,7 @@ dump_wavefront(std::ostream& out, std::ostream* material_out, std::string_view m
 
 	out << "\n# normals\n";
 	for (const auto& feat : feats) {
-		out << "vn " << feat.normal.x << " " << feat.normal.y << " " << feat.normal.z << "\n";
+		out << "vn " << feat.normal.z << " " << feat.normal.y << " " << feat.normal.x << "\n";
 	}
 
 	out << "\n# textures\n";
