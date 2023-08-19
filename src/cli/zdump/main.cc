@@ -33,6 +33,7 @@ enum class file_format {
 	mrm,
 	mdm,
 	mmb,
+	vdf,
 	unknown,
 };
 
@@ -61,6 +62,10 @@ int dump(file_format fmt, px::buffer& in, bool bson) {
 		output = phoenix::model_mesh::parse(in);
 	} else if (fmt == file_format::mmb) {
 		output = phoenix::morph_mesh::parse(in);
+	} else if (fmt == file_format::vdf) {
+		phoenix::Vfs vfs;
+		vfs.mount_disk(in);
+		output = vfs;
 	} else {
 		fmt::print(stderr, "format not supported");
 		return EXIT_FAILURE;
@@ -80,6 +85,10 @@ file_format detect_file_format(px::buffer&& buf) {
 	buf.mark();
 	if (buf.get_string(4) == "ZTEX")
 		return file_format::tex;
+
+	buf.reset();
+	if (buf.position(256), buf.get_string(12) == "PSVDSC_V2.00")
+		return file_format::vdf;
 
 	buf.reset();
 	if (buf.get_ushort() == 0xD000)

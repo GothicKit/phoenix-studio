@@ -13,6 +13,7 @@
 #include <phoenix/texture.hh>
 #include <phoenix/vdfs.hh>
 #include <phoenix/world.hh>
+#include <phoenix/Vfs.hh>
 
 #include <nlohmann/json.hpp>
 
@@ -64,4 +65,10 @@ namespace phoenix {
 	void to_json(nlohmann::json& j, const px::morph_source& obj);
 
 	void to_json(nlohmann::json& j, const px::model& obj);
+
+	void to_json(nlohmann::json& j, const px::Vfs& obj);
+
+	void to_json(nlohmann::json& j, const px::VfsNode& obj);
+
+	void to_json(nlohmann::json& j, const px::VfsNodeType& obj);
 } // namespace phoenix

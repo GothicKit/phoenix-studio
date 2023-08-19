@@ -588,8 +588,42 @@ namespace phoenix {
 
 	void to_json(nlohmann::json& j, const px::model& obj) {
 		j = {
-			{"mesh", obj.mesh},
-			{"hierarchy", obj.hierarchy},
+		    {"mesh", obj.mesh},
+		    {"hierarchy", obj.hierarchy},
+		};
+	}
+
+	void to_json(nlohmann::json& j, const px::VfsNodeType& obj) {
+		switch (obj) {
+		case VfsNodeType::DIRECTORY:
+			j = "DIRECTORY";
+			break;
+		case VfsNodeType::FILE:
+			j = "FILE";
+			break;
+		}
+	}
+
+	void to_json(nlohmann::json& j, const px::VfsNode& obj) {
+		if (obj.type() == VfsNodeType::FILE) {
+			j = {
+			    {"name", obj.name()},
+			    {"type", obj.type()},
+			    {"time", obj.time()},
+			};
+		} else {
+			j = {
+			    {"name", obj.name()},
+			    {"type", obj.type()},
+			    {"time", obj.time()},
+			    {"children", obj.children()},
+			};
+		}
+	}
+
+	void to_json(nlohmann::json& j, const px::Vfs& obj) {
+		j = {
+		    {"root", obj.root()},
 		};
 	}
 
