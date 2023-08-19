@@ -37,7 +37,7 @@ static void dump_wavefront(std::ostream& out,
 	out << "# vertices\n";
 
 	for (const auto& item : mesh.positions) {
-		out << "v " << item.x << " " << item.y << " " << item.z << "\n";
+		out << "v " << item.z << " " << item.y << " " << item.x << "\n";
 	}
 
 	unsigned wedge_offset = 0;
@@ -47,7 +47,7 @@ static void dump_wavefront(std::ostream& out,
 		    << "usemtl " << msh.mat.name << "\n";
 
 		for (const auto& item : msh.wedges) {
-			out << "vn " << item.normal.x << " " << item.normal.y << " " << item.normal.z << "\n";
+			out << "vn " << item.normal.z << " " << item.normal.y << " " << item.normal.x << "\n";
 			out << "vt " << item.texture.x << " " << item.texture.y << "\n";
 		}
 
